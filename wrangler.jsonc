@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // Must match the Worker name in the Cloudflare dashboard, or the build fails.
+  "name": "tailout",
+  "compatibility_date": "2026-09-05",
+  // Static site only: no Worker code. Cloudflare serves ./dist, and every route
+  // that isn't a file (/plan, /rigs/texas, ...) gets index.html so deep links work.
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
