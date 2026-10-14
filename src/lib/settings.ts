@@ -38,6 +38,12 @@ export function useSettings(): AppSettings {
   )
 }
 
-function mergeSettings(v: Partial<AppSettings> | undefined): AppSettings {
-  return { ...DEFAULT_SETTINGS, ...v, layers: { ...DEFAULT_SETTINGS.layers, ...v?.layers } }
+/** Bumped when a default layer changes for people who already have saved settings. */
+export const LAYERS_REV = 2
+
+export function mergeSettings(v: Partial<AppSettings> | undefined): AppSettings {
+  const merged = { ...DEFAULT_SETTINGS, ...v, layers: { ...DEFAULT_SETTINGS.layers, ...v?.layers } }
+  // Rev 2: shops, ramps and access points are on by default, so the map shows what's near you.
+  if (v && (v.layersRev ?? 1) < 2) merged.layers = { ...merged.layers, amenities: true }
+  return { ...merged, layersRev: LAYERS_REV }
 }

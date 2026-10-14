@@ -7,6 +7,9 @@ import { parsePlaces } from './overpass'
 import { planArea, MAX_AREA_TILES } from './offline'
 import { streamKey } from './streams'
 import { waterFromGaugeName } from '../sheets/GaugeSheet'
+import { shouldLocateOnOpen } from './locate'
+import { mergeSettings } from './settings'
+import { DEFAULT_SETTINGS } from './db'
 
 describe('units', () => {
   it('formats and parses both systems', () => {
@@ -155,5 +158,29 @@ describe('streams', () => {
   it('keys notes by name and a 0.25° cell', () => {
     expect(streamKey(' Clear  Creek ', 39.75, -105.23)).toBe('clear creek@0.25:159:-421')
     expect(streamKey('Mill Creek', 39.75, -105.23)).not.toBe(streamKey('Mill Creek', 44.5, -72.1))
+  })
+})
+
+describe('locate on open', () => {
+  const geo = { geolocation: {} as Geolocation }
+  const perm = (state: PermissionState) => ({ ...geo, permissions: { query: async () => ({ state }) as PermissionStatus } })
+  it('centres on the angler unless location is off or a spot was linked', async () => {
+    expect(await shouldLocateOnOpen(perm('granted'), '')).toBe(true)
+    expect(await shouldLocateOnOpen(perm('prompt'), '')).toBe(true)
+    expect(await shouldLocateOnOpen(perm('denied'), '')).toBe(false)
+    expect(await shouldLocateOnOpen(perm('granted'), '?focus=45,-111,14')).toBe(false)
+    expect(await shouldLocateOnOpen({ geolocation: undefined as unknown as Geolocation }, '')).toBe(false)
+    const broken = { ...geo, permissions: { query: async () => Promise.reject(new TypeError('unsupported')) } }
+    expect(await shouldLocateOnOpen(broken, '')).toBe(true)
+  })
+})
+
+describe('settings migration', () => {
+  it('turns nearby access points on once for old settings, then respects the choice', () => {
+    const old = mergeSettings({ layers: { ...DEFAULT_SETTINGS.layers, amenities: false } })
+    expect(old.layers.amenities).toBe(true)
+    expect(old.layersRev).toBe(2)
+    expect(mergeSettings({ ...old, layers: { ...old.layers, amenities: false } }).layers.amenities).toBe(false)
+    expect(mergeSettings(undefined).layers.amenities).toBe(true)
   })
 })

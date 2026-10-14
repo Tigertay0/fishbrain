@@ -107,7 +107,7 @@ export function ForecastScreen() {
         <span className="font-semibold text-text">{place.label}</span>
         {forecast ? ` · times in ${forecast.timezone.replace(/_/g, ' ')}` : ''}
       </p>
-      {wxState === 'loading' && !forecast ? <div className="skeleton h-16" aria-label="Loading forecast" /> : null}
+      {wxState === 'loading' && !forecast ? <div className="skeleton h-16" role="status" aria-label="Loading forecast" /> : null}
       {wxState === 'error' ? <p className="rounded-md bg-surface p-3 text-sm">Weather is unavailable (offline?). Scores below use sun and moon only.</p> : null}
       {wxState === 'stale' ? <p className="rounded-md bg-surface p-3 text-sm">Offline: showing the last saved forecast.</p> : null}
 

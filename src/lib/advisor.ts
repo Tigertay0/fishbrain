@@ -49,6 +49,8 @@ export type Recommendation = {
   tackle: Profile['tackle']
   why: string[]
   warnings: string[]
+  /** bait, lures and flies picked for this season (listed first, marked "best now") */
+  seasonal: string[]
 }
 
 export type Plan = {
@@ -111,9 +113,41 @@ export function activityFor(p: Profile, tempF: number | undefined, phase: Phase)
   return 'low'
 }
 
-/** Merges a phase's overrides onto the species' default tactic. */
+/** Season picks first, then the rest of the all-season list, each once. */
+const withSeason = (season: string[] | undefined, all: string[]) => [...new Set([...(season ?? []), ...all])]
+
+/**
+ * Merges a phase onto the species' default tactic. Where, how and rigs are
+ * replaced; bait, lures and flies keep the full list with the season's picks
+ * in front, so a season reorders the options without hiding the rest.
+ */
 export function tacticFor(p: Profile, phase: Phase): Tactic {
-  return { ...p.tactics.default, ...p.tactics[phase] } as Tactic
+  const d = p.tactics.default
+  const s = p.tactics[phase] ?? {}
+  return { ...d, ...s, baits: withSeason(s.baits, d.baits), lures: withSeason(s.lures, d.lures), flies: withSeason(s.flies, d.flies) }
+}
+
+/** The bait, lures and flies this phase singles out (shown as "best now"). */
+export function seasonalPicks(p: Profile, phase: Phase): string[] {
+  const s = p.tactics[phase]
+  return [...(s?.baits ?? []), ...(s?.lures ?? []), ...(s?.flies ?? [])]
+}
+
+export type Pack = { baits: string[]; lures: string[]; flies: string[] }
+
+/**
+ * One tackle list for the trip: the best bets' bait, lures and flies, taken
+ * round-robin so every fish's top picks come first, without repeats.
+ */
+export function packList(recs: Recommendation[], top = 3, max = 12): Pack {
+  const pick = (lists: string[][]) => {
+    const out = new Set<string>()
+    const longest = Math.max(0, ...lists.map((l) => l.length))
+    for (let i = 0; i < longest && out.size < max; i++) for (const l of lists) if (i < l.length && out.size < max) out.add(l[i])
+    return [...out]
+  }
+  const best = recs.slice(0, top)
+  return { baits: pick(best.map((r) => r.baits)), lures: pick(best.map((r) => r.lures)), flies: pick(best.map((r) => r.flies)) }
 }
 
 export function colorsFor(clarity: Clarity, forage: string[]): string {
@@ -267,6 +301,7 @@ function recommend(
     tackle: p.tackle,
     why,
     warnings,
+    seasonal: seasonalPicks(p, phase),
   }
 }
 

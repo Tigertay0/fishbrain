@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activityFor, colorsFor, defaultTargets, estimateWaterTempC, isWarming, phaseFor, plan, region, type PlanInput } from './advisor'
+import { activityFor, colorsFor, defaultTargets, estimateWaterTempC, isWarming, packList, phaseFor, plan, region, tacticFor, type PlanInput } from './advisor'
 import { PROFILE_BY_ID, PROFILES, profileForLatin } from './species'
 import { RIG_BY_ID, RIGS } from './rigs'
 import { classify, parseAirHistory, pickWater, waterQuery } from './waters'
@@ -93,6 +93,38 @@ describe('plan', () => {
     expect(r.rigs.every((x) => x.methods.includes('fly'))).toBe(true)
     expect(r.baits).toEqual([])
     expect(r.flies.length).toBeGreaterThan(0)
+  })
+  it('a season adds its own picks in front of the full list instead of replacing it', () => {
+    const cold = tacticFor(PROFILE_BY_ID.smallmouth, 'cold')
+    expect(cold.lures.slice(0, 3)).toEqual(['Hair jig', 'Blade bait', 'Ned worm'])
+    expect(cold.lures).toContain('Tube') // from the all-season list
+    expect(new Set(cold.lures).size).toBe(cold.lures.length) // no duplicates
+    const r = plan({ ...base, waterTempC: fToC(40), presence: [{ latin: 'Micropterus dolomieu', common: 'Smallmouth', count: 4 }] }).recs[0]
+    expect(r.seasonal).toContain('Hair jig')
+    expect(r.seasonal).not.toContain('Tube')
+  })
+  it('gives a real choice of bait and lures for every fish', () => {
+    for (const p of PROFILES) {
+      const d = p.tactics.default
+      expect(d.baits.length, `${p.id} baits`).toBeGreaterThanOrEqual(3)
+      if (!/^Not usual/.test(d.lures[0])) expect(d.lures.length, `${p.id} lures`).toBeGreaterThanOrEqual(5)
+    }
+  })
+  it('packs one combined tackle list from the best bets, without repeats', () => {
+    const p = plan({
+      ...base,
+      waterTempC: fToC(70),
+      presence: [
+        { latin: 'Micropterus nigricans', common: 'Largemouth', count: 9 },
+        { latin: 'Lepomis macrochirus', common: 'Bluegill', count: 6 },
+        { latin: 'Pomoxis nigromaculatus', common: 'Crappie', count: 3 },
+      ],
+    })
+    const pack = packList(p.recs)
+    expect(pack.lures.length).toBeGreaterThanOrEqual(6)
+    expect(pack.baits).toContain('Nightcrawler')
+    expect(new Set(pack.lures).size).toBe(pack.lures.length)
+    expect(pack.lures.every((x) => !/^Not usual/.test(x))).toBe(true)
   })
   it('warns about warm water for trout and spawning fish', () => {
     const hot = plan({ ...base, water: { type: 'river' }, waterTempC: fToC(70), presence: [{ latin: 'Oncorhynchus mykiss', common: 'Rainbow', count: 3 }] })

@@ -21,10 +21,9 @@ test.describe('F03 plan a trip by forecast', () => {
     check()
   })
 
-  test('F03-E1 no place yet: asks for location, then forecasts it', async ({ page }) => {
+  test('F03-E1 no place yet: finds your location on open, then forecasts it', async ({ page }) => {
     await mockNetwork(page)
     await page.goto('/forecast')
-    await page.getByRole('button', { name: 'Use my location' }).click()
     await expect(page.getByText('Your location')).toBeVisible()
     await expect(page.getByRole('tab')).toHaveCount(7)
   })

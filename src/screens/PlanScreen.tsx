@@ -6,7 +6,7 @@ import { Button, inputClass, Page, Segmented } from '../components/ui'
 import { RigDiagram } from '../components/RigDiagram'
 import { useToast } from '../components/Toast'
 import { updateSettings, useSettings } from '../lib/settings'
-import { estimateWaterTempC, plan, type Clarity, type Presence, type Recommendation, type WaterKind } from '../lib/advisor'
+import { estimateWaterTempC, packList, plan, type Clarity, type Presence, type Recommendation, type WaterKind } from '../lib/advisor'
 import { loadAirHistory, lookupWater, searchRadiusKm, type AirHistory, type WaterBody } from '../lib/waters'
 import { inFrance, loadFrenchSurveys, loadSpeciesNear, mergePresence, type Sources } from '../lib/publicdata'
 import { loadStocking, STOCKING_COVERAGE } from '../lib/stocking'
@@ -60,7 +60,8 @@ export function PlanScreen() {
 
   // Where: a place from the link, else a recent GPS fix.
   useEffect(() => {
-    if (params.get('lat') && Number.isFinite(qLat) && Number.isFinite(qLon)) setPlace({ lat: qLat, lon: qLon })
+    // Same spot, same object: a background GPS fix must not reload everything for a linked place.
+    if (params.get('lat') && Number.isFinite(qLat) && Number.isFinite(qLon)) setPlace((p) => (p?.lat === qLat && p?.lon === qLon ? p : { lat: qLat, lon: qLon }))
     else if (s.lastFix && Date.now() - s.lastFix.at < 2 * 60 * MINUTE) setPlace((p) => p ?? { lat: s.lastFix!.lat, lon: s.lastFix!.lon })
   }, [params, qLat, qLon, s.lastFix])
 
@@ -266,7 +267,7 @@ export function PlanScreen() {
     >
       <section aria-label="Water" className="flex flex-col gap-1">
         {waterState === 'loading' ? (
-          <div className="skeleton h-8 w-2/3" aria-label="Finding the water" />
+          <div className="skeleton h-8 w-2/3" role="status" aria-label="Finding the water" />
         ) : (
           <h2 className="text-xl font-bold">{water?.name ?? (type === 'unknown' ? 'Water near you' : `Unnamed ${type}`)}</h2>
         )}
@@ -333,11 +334,12 @@ export function PlanScreen() {
       {result && !result.unsupported ? (
         <section aria-label="Best bets" className="flex flex-col gap-3">
           <h2 className="text-lg font-bold">Best bets here</h2>
-          {sourcesState === 'loading' ? <div className="skeleton h-40" aria-label="Checking which fish live here" /> : null}
+          {sourcesState === 'loading' ? <div className="skeleton h-40" role="status" aria-label="Checking which fish live here" /> : null}
           {result.fromDefaults && sourcesState !== 'loading' ? (
             <p className="rounded-md bg-surface p-3 text-sm">No public fish records near here yet, so these are the fish that usually live in a {type === 'unknown' ? 'water' : type} like this.</p>
           ) : null}
           {/* Wait for the records, so the list doesn't show a guess and then reshuffle. */}
+          {sourcesState === 'loading' ? null : <PackCard recs={recs} />}
           {sourcesState === 'loading'
             ? null
             : recs.map((r, i) => <RecCard key={r.profile.id} rec={r} open={i === 0} place={place} forecast={forecast} waterTempC={temp.c} />)}
@@ -447,9 +449,13 @@ function RecCard({ rec, open, place, forecast, waterTempC }: { rec: Recommendati
             ) : null}
           </div>
         ) : null}
-        {r.baits.length ? <Row label="Bait">{r.baits.join(', ')}</Row> : null}
-        {r.lures.length ? <Row label="Lures">{r.lures.join(', ')}</Row> : null}
-        {r.flies.length ? <Row label="Flies">{r.flies.join(', ')}</Row> : null}
+        {r.seasonal.length ? <p className="text-xs text-muted">Outlined = best right now for the {r.phaseLabel.toLowerCase()}.</p> : null}
+        <TackleList label="Bait" items={r.baits} now={r.seasonal} />
+        <TackleList label="Lures" items={r.lures} now={r.seasonal} />
+        <TackleList label="Flies" items={r.flies} now={r.seasonal} />
+        {!r.lures.length && r.profile.tactics.default.lures.some((l) => /^Not usual/.test(l)) ? (
+          <p className="text-muted">Lures rarely work for {r.profile.name.toLowerCase()}: bait is the way.</p>
+        ) : null}
         {r.lures.length || r.flies.length ? <Row label="Colours">{r.colors}</Row> : null}
         <Row label="Tackle">
           {r.tackle.line}; {r.tackle.hooks}
@@ -463,6 +469,48 @@ function RecCard({ rec, open, place, forecast, waterTempC }: { rec: Recommendati
         </Row>
       </div>
     </details>
+  )
+}
+
+/** Everything the best bets call for, in one list to pack before heading out. */
+function PackCard({ recs }: { recs: Recommendation[] }) {
+  const pack = useMemo(() => packList(recs), [recs])
+  // With one fish, its own card already is the list.
+  if (recs.length < 2 || (!pack.baits.length && !pack.lures.length && !pack.flies.length)) return null
+  const names = recs.slice(0, 3).map((r) => r.profile.name.toLowerCase())
+  return (
+    <section aria-label="Bring these" className="flex flex-col gap-3 rounded-md bg-surface p-4 text-sm">
+      <div>
+        <h3 className="text-base font-bold">Bring these</h3>
+        <p className="text-muted">For {names.join(', ').replace(/, ([^,]*)$/, ' and $1')}. Best picks first.</p>
+      </div>
+      <TackleList label="Bait" items={pack.baits} tone="raised" />
+      <TackleList label="Lures" items={pack.lures} tone="raised" />
+      <TackleList label="Flies" items={pack.flies} tone="raised" />
+    </section>
+  )
+}
+
+function TackleList({ label, items, now = [], tone = 'surface' }: { label: string; items: string[]; now?: string[]; tone?: 'surface' | 'raised' }) {
+  if (!items.length) return null
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="font-semibold">{label}</span>
+      <ul className="flex flex-wrap gap-1.5">
+        {items.map((x) => {
+          const best = now.includes(x)
+          return (
+            <li
+              key={x}
+              className={`rounded-full border px-2.5 py-1 ${best ? 'border-accent font-semibold text-accent-strong' : 'border-transparent'} ${tone === 'raised' ? 'bg-raised' : 'bg-surface'}`}
+            >
+              {x}
+              {best ? <span className="sr-only"> (best right now)</span> : null}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
 

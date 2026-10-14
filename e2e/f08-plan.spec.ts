@@ -14,9 +14,15 @@ test.describe('F08 what to use at this water', () => {
     await expect(first).toContainText('Brown trout')
     await expect(first).toContainText('14 public records nearby')
     await expect(first.getByRole('img', { name: /Diagram of a/ })).toBeVisible()
-    await expect(first).toContainText('Bait:')
-    await expect(first).toContainText('Lures:')
+    await expect(first.getByText('Bait', { exact: true })).toBeVisible()
+    await expect(first.getByText('Lures', { exact: true })).toBeVisible()
+    await expect(first.getByRole('listitem').filter({ hasText: /spinner/ }).first()).toBeVisible()
+    expect(await first.getByRole('listitem').count()).toBeGreaterThan(10) // a real choice, not one lure
     await expect(first).toContainText('Why:')
+    // One combined list to pack, across the best bets.
+    const pack = page.getByRole('region', { name: 'Bring these' })
+    await expect(pack).toBeVisible()
+    expect(await pack.getByRole('listitem').count()).toBeGreaterThan(10)
     // Not a target species, but recorded: listed separately.
     await expect(page.getByText(/Also recorded: White Sucker/)).toBeVisible()
     await expect(page.getByTestId('conditions-summary')).toContainText('(estimate)')
@@ -37,8 +43,9 @@ test.describe('F08 what to use at this water', () => {
     await expect(page.getByText(/68°F or warmer/).first()).toBeAttached()
     await page.getByRole('radiogroup').filter({ hasText: 'Lures' }).locator('label', { hasText: 'Fly' }).click()
     const first = page.getByRole('region', { name: 'Best bets' }).locator('details').first()
-    await expect(first).toContainText('Flies:')
-    await expect(first).not.toContainText('Bait:')
+    await expect(first.getByText('Flies', { exact: true })).toBeVisible()
+    await expect(first.getByText('Bait', { exact: true })).toHaveCount(0)
+    await expect(first.getByText('Lures', { exact: true })).toHaveCount(0)
   })
 
   test('F08-H3 a lake found from coordinates alone', async ({ page }) => {

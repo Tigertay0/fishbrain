@@ -108,7 +108,7 @@ export function GaugeSheet({ gauge, onClose }: { gauge: Gauge; onClose: () => vo
             {band === 'stress' && gauge.tempC != null ? ` (${Math.round(cToF(gauge.tempC))}°F is above the 68°F guideline.)` : ''}
           </p>
         ) : null}
-        {histState === 'loading' ? <div className="skeleton h-24" aria-label="Loading 7-day history" /> : null}
+        {histState === 'loading' ? <div className="skeleton h-24" role="status" aria-label="Loading 7-day history" /> : null}
         {histState === 'error' ? <p className="text-sm text-muted">History unavailable right now.</p> : null}
         {histState === 'ok' && hist ? (
           <>

@@ -52,7 +52,7 @@ export function WaterSheet({ hit, onClose }: { hit: WaterHit; onClose: () => voi
     >
       <section aria-label="Fish recorded here" className="text-sm">
         <h3 className="mb-1 font-semibold">Fish recorded within 2 km</h3>
-        {fish === 'loading' ? <div className="skeleton h-10" aria-label="Loading" /> : null}
+        {fish === 'loading' ? <div className="skeleton h-10" role="status" aria-label="Loading" /> : null}
         {fish === 'error' ? <p className="text-muted">Public records unavailable right now.</p> : null}
         {Array.isArray(fish) ? (
           fish.length ? (

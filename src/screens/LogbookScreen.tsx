@@ -30,7 +30,7 @@ export function LogbookScreen() {
       }
     >
       {catches === undefined ? (
-        <div className="flex flex-col gap-2" aria-label="Loading">
+        <div className="flex flex-col gap-2" role="status" aria-label="Loading">
           {[0, 1, 2].map((i) => (
             <div key={i} className="skeleton h-20" />
           ))}

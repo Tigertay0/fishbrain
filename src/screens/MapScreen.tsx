@@ -14,6 +14,7 @@ import { loadSightingsCell, SIGHTING_CELL_DEG, SIGHTING_MIN_ZOOM, type Sighting 
 import { formatFlow, formatTemp } from '../lib/units'
 import { searchPlaces, type SearchResult } from '../lib/search'
 import { FetchError } from '../lib/cache'
+import { shouldLocateOnOpen } from '../lib/locate'
 import type { StreamHit } from '../lib/streams'
 import { IconButton } from '../components/ui'
 import { useToast } from '../components/Toast'
@@ -61,6 +62,8 @@ export function MapScreen({ active }: { active: boolean }) {
     let fellBack = false
     let styleLoaded = false
     let longPress: ReturnType<typeof setTimeout> | undefined
+    // Read now: the ?focus= link is cleared from the address bar before the map finishes loading.
+    const openedWith = window.location.search
     void getSettings().then((s) => {
       if (cancelled || !container.current) return
       const map = new maplibregl.Map({
@@ -113,7 +116,13 @@ export function MapScreen({ active }: { active: boolean }) {
         longPress = setTimeout(() => setSel({ type: 'marker', point: { lat: at.lat, lon: at.lng } }), 600)
       })
       for (const ev of ['touchend', 'touchmove', 'movestart', 'touchcancel'] as const) map.on(ev, () => clearTimeout(longPress))
-      map.on('load', () => void loadVisible())
+      map.on('load', () => {
+        void loadVisible()
+        // Open on the angler, zoomed in far enough that gauges, fish records and access points load around them.
+        void shouldLocateOnOpen(navigator, openedWith).then((go) => {
+          if (go && !cancelled) geo.trigger()
+        })
+      })
     })
     return () => {
       cancelled = true

@@ -158,7 +158,7 @@ export function StatTile({ label, value, hint, tone = 'neutral', loading }: { la
   return (
     <div className="flex min-w-0 flex-col gap-0.5 rounded-md bg-surface p-3">
       <span className="text-xs font-medium text-muted">{label}</span>
-      {loading ? <span className="skeleton h-7 w-20" aria-label="Loading" /> : <span className={`text-lg font-semibold ${TONE[tone]}`}>{value}</span>}
+      {loading ? <span className="skeleton h-7 w-20" role="status" aria-label="Loading" /> : <span className={`text-lg font-semibold ${TONE[tone]}`}>{value}</span>}
       {hint && !loading ? <span className="text-xs text-muted">{hint}</span> : null}
     </div>
   )

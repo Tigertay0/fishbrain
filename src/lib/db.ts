@@ -89,6 +89,8 @@ export type AppSettings = {
   layers: Record<LayerKey, boolean>
   lastView?: { lat: number; lon: number; zoom: number }
   lastFix?: { lat: number; lon: number; at: number }
+  /** which layer defaults these settings have seen (see LAYERS_REV in settings.ts) */
+  layersRev?: number
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -96,7 +98,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultPrivacy: 'exact',
   usgsApiKey: '',
   basemap: 'streets',
-  layers: { streams: true, gauges: true, catches: true, markers: true, amenities: false, sightings: true },
+  layers: { streams: true, gauges: true, catches: true, markers: true, amenities: true, sightings: true },
 }
 
 class TailoutDB extends Dexie {
