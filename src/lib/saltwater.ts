@@ -417,17 +417,24 @@ export const SALT_PROFILES: Profile[] = [
   },
 ]
 
-/** Which stretch of coast a point is on. Rough boxes, good enough to pick likely fish. */
-export function coastFor(lat: number, lon: number): Coast {
-  if (lon > -25) return 'eu'
-  if (lon < -100) return 'pacific'
-  if (lat < 31 && lon < -81) return 'gulf'
+/**
+ * Which stretch of coast a point is on: rough boxes, good enough to pick likely
+ * fish. Undefined outside the coasts the guide covers (Hawaii, the Caribbean,
+ * the rest of the world), so it never guesses fish that don't live there.
+ */
+export function coastFor(lat: number, lon: number): Coast | undefined {
+  if (lon >= -12 && lon <= 40 && lat >= 35 && lat <= 72) return 'eu'
+  if (lon < -100 && lon > -170 && lat > 31 && lat < 72) return 'pacific'
+  if (lon < -100 || lon > -52 || lat < 24 || lat > 52) return undefined
+  // Florida's Atlantic side runs west of -81.6 only below Jacksonville's latitude.
+  if (lat < 31 && lon < -81.6) return 'gulf'
   if (lat < 36.5) return 'se'
   return 'ne'
 }
 
 /** The fish that usually live on this coast, when no records say otherwise. */
-export function defaultSaltTargets(coast: Coast, lat: number): string[] {
+export function defaultSaltTargets(coast: Coast | undefined, lat: number): string[] {
+  if (!coast) return []
   const subtropical = lat < 29.5
   switch (coast) {
     case 'ne':

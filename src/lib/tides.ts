@@ -39,6 +39,8 @@ export function nearestTideStation(lat: number, lon: number) {
   const ro = Math.round(lon * 20) / 20
   return cachedFetch(`tide:stn:${rl}:${ro}`, 90 * DAY, async () => {
     const json = await fetchJson<{ stationList?: RawStation[] | null }>(`${STATIONS}?lat=${rl}&lon=${ro}&radius=${STATION_RADIUS_MI}`)
+    // "No station here" is only an answer when NOAA says so ({"stationList": null}); anything else is an error, not cached.
+    if (!('stationList' in json)) throw new Error('Unexpected tide station response')
     return parseStations(json, lat, lon)[0] ?? null
   })
 }

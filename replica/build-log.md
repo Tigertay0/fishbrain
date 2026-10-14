@@ -25,5 +25,15 @@ Harder than expected:
 - Open-Meteo returns local wall-clock times; all solunar math runs from the
   place's own midnight so the device's time zone never leaks in.
 
-Not built: fly/lure suggestions (could-have), sync and accounts (milestone in
-architecture.md), public-land layer.
+Not built: sync and accounts (milestone in architecture.md; dropped for now:
+the app has a single user).
+
+Added 2026-10-14, after launch:
+- Map opens on the angler's location; OSM shops, ramps and access on by default.
+- What to use: full bait, lure and fly lists per fish with season picks
+  marked, and a combined "Bring these" list.
+- Public land layer (USGS PAD-US tiles by manager; tap for name, agency and
+  public access from the fee and access services).
+- Saltwater advice: 15 inshore fish, NOAA tides, Open-Meteo sea temperature,
+  tide-aware ranking and windows, three saltwater rigs.
+- Offline "Save this area" checked against live OpenFreeMap and PAD-US tiles.

@@ -8,7 +8,7 @@ import { planArea, MAX_AREA_TILES } from './offline'
 import { streamKey } from './streams'
 import { waterFromGaugeName } from '../sheets/GaugeSheet'
 import { shouldLocateOnOpen } from './locate'
-import { formatClockDay } from './format'
+import { formatClockDay, formatSpan } from './format'
 import { mergeSettings } from './settings'
 import { DEFAULT_SETTINGS } from './db'
 
@@ -193,5 +193,16 @@ describe('clock with day', () => {
     expect(formatClockDay(Date.parse('2026-10-14T23:00Z'), off, now)).not.toMatch(/tomorrow/) // 6 PM today
     expect(formatClockDay(Date.parse('2026-10-15T06:00Z'), off, now)).toMatch(/tomorrow$/) // 1 AM tomorrow local
     expect(formatClockDay(Date.parse('2026-10-16T18:00Z'), off, now)).toMatch(/^Fri /)
+  })
+})
+
+describe('time spans', () => {
+  it('names the day once', () => {
+    const off = -5 * 3600
+    const now = Date.parse('2026-10-14T20:00Z') // 3 PM local
+    expect(formatSpan(Date.parse('2026-10-14T23:10Z'), Date.parse('2026-10-15T02:40Z'), off, now)).not.toMatch(/tomorrow/) // 6:10–9:40 PM
+    const early = formatSpan(Date.parse('2026-10-15T06:05Z'), Date.parse('2026-10-15T08:30Z'), off, now) // 1:05–3:30 AM tomorrow
+    expect(early.match(/tomorrow/g)).toHaveLength(1)
+    expect(formatSpan(Date.parse('2026-10-15T04:20Z'), Date.parse('2026-10-15T07:10Z'), off, now)).toMatch(/PM–.*tomorrow$/) // 11:20 PM–2:10 AM tomorrow
   })
 })

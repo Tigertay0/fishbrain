@@ -16,8 +16,10 @@ features 97.9  (41 counted, must-haves 20 of 20 done)
 - platform                     100.0  (2 features)
 
 ## Missing, in build order
-- [should] offline: Download a map area for offline use, partial  (TroutRoutes offline maps; built (2,500-tile areas, version-free tile cache keys) but not run against live OpenFreeMap tiles yet)
-- [could] forecast: Saltwater advice, no  (not built: tides needed; the app says so instead of guessing)
+Nothing, as of 2026-10-14 (score above not recomputed):
+- [should] offline: Download a map area for offline use: done. Checked against live OpenFreeMap and PAD-US tiles; the saved area lands in the service worker caches under version-free keys.
+- [could] forecast: Saltwater advice: done, with NOAA tides and sea temperature (see build-log.md).
+- Public land boundaries (was "left out on purpose"): done with USGS PAD-US vector tiles, no hosting needed.
 
 ## Left out on purpose (not scored)
 - Elevation profile of a stream: needs a DEM service; later

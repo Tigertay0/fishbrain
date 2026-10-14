@@ -210,6 +210,17 @@ export function plan(input: PlanInput): Plan {
   const defaults = salt ? defaultSaltTargets(coastFor(input.lat, input.lon), input.lat) : defaultTargets(type, reg, input.lat, tempF)
   const candidates = fromDefaults ? defaults.map((id) => PROFILE_BY_ID[id]).filter(Boolean) : [...byProfile.keys()].map((id) => PROFILE_BY_ID[id])
 
+  if (salt && !candidates.length) {
+    return {
+      recs: [],
+      otherFish,
+      forage: [...forage],
+      notes: [],
+      fromDefaults,
+      unsupported: 'The saltwater guide covers US and European coasts, and nothing recorded near here matches it yet. Fish the moving water between the turns of the tide.',
+    }
+  }
+
   const recs = candidates.map((p) => recommend(p, input, tempF, warming, byProfile.get(p.id), [...forage], fromDefaults))
   recs.sort((a, b) => b.score - a.score)
 

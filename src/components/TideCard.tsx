@@ -1,21 +1,34 @@
 import { ArrowDown, ArrowUp, Waves } from 'lucide-react'
 import { formatClockDay } from '../lib/format'
+import { Button } from './ui'
 import { STAGE_TEXT, tideNow, type TideEvent, type TideStation } from '../lib/tides'
 
 export type Tides = { station: TideStation; events: TideEvent[] }
 
 const HOUR = 3_600_000
 
+/** undefined while loading, null when there's no station nearby, 'error' when the lookup failed. */
+export type TideState = Tides | null | 'error' | undefined
+
 /** Where the tide is now and the next turns, from the nearest NOAA station. */
-export function TideCard({ tides, offsetSec }: { tides: Tides | null | undefined; offsetSec?: number }) {
+export function TideCard({ tides, offsetSec, onRetry }: { tides: TideState; offsetSec?: number; onRetry: () => void }) {
   if (tides === undefined) return <div className="skeleton h-28" role="status" aria-label="Loading tides" />
-  if (tides === null) {
+  if (tides === null || tides === 'error') {
     return (
-      <section aria-label="Tides" className="rounded-md bg-surface p-4 text-sm">
+      <section aria-label="Tides" className="flex flex-col items-start gap-2 rounded-md bg-surface p-4 text-sm">
         <h2 className="flex items-center gap-2 text-base font-bold">
           <Waves size={18} aria-hidden /> Tides
         </h2>
-        <p className="mt-1">No NOAA tide station within 25 miles (tide predictions here cover US coasts). Fish the moving water between the turns.</p>
+        {tides === null ? (
+          <p>No NOAA tide station within 25 miles (tide predictions here cover US coasts). Fish the moving water between the turns.</p>
+        ) : (
+          <>
+            <p>Couldn’t load the tides (offline or weak signal?). Fish the moving water between the turns.</p>
+            <Button size="sm" onClick={onRetry}>
+              Try again
+            </Button>
+          </>
+        )}
       </section>
     )
   }

@@ -15,14 +15,14 @@ import { solunarDay } from '../lib/solunar'
 import { bestWindows, scoreDay } from '../lib/bite'
 import { nearestGauges } from '../lib/usgs'
 import { useGauges } from '../lib/store'
-import { formatClock, formatClockDay, formatDate } from '../lib/format'
+import { formatClock, formatDate, formatSpan } from '../lib/format'
 import { cToF, formatTemp, fToC } from '../lib/units'
 import { formatCoords } from '../lib/geo'
 import { MINUTE } from '../lib/cache'
 import type { Method } from '../lib/rigs'
 import { loadTides, nearestTideStation, PREF_TEXT, tideNow, tideWindows, type TideEvent } from '../lib/tides'
 import { loadSeaTemp } from '../lib/marine'
-import { TideCard, type Tides } from '../components/TideCard'
+import { TideCard, type TideState } from '../components/TideCard'
 
 type Place = { lat: number; lon: number }
 
@@ -136,7 +136,8 @@ export function PlanScreen() {
   }, [place])
 
   // Salt water: the nearest NOAA tide station and the sea temperature.
-  const [tides, setTides] = useState<Tides | null>()
+  const [tides, setTides] = useState<TideState>()
+  const [tideTry, setTideTry] = useState(0)
   const [seaC, setSeaC] = useState<number>()
   useEffect(() => {
     setTides(undefined)
@@ -153,12 +154,21 @@ export function PlanScreen() {
         const ev = await loadTides(station.id)
         if (live) setTides({ station, events: ev.data })
       })
-      .catch(() => live && setTides(null))
+      .catch(() => live && setTides('error'))
     return () => {
       live = false
     }
-  }, [place, type])
-  const tideState = useMemo(() => (tides ? tideNow(tides.events, Date.now()) : undefined), [tides])
+  }, [place, type, tideTry])
+  // The tide moves on while the screen stays open: re-read the stage every minute.
+  const [minute, setMinute] = useState(0)
+  useEffect(() => {
+    if (type !== 'coast') return
+    const id = setInterval(() => setMinute((m) => m + 1), 60_000)
+    return () => clearInterval(id)
+  }, [type])
+  const tideEvents = tides && tides !== 'error' ? tides.events : undefined
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const tideState = useMemo(() => (tideEvents ? tideNow(tideEvents, Date.now()) : undefined), [tideEvents, minute])
 
   // Water temperature: your reading > a gauge on this river (or the sea surface) > an estimate from the air.
   const gauge = useMemo(() => {
@@ -314,7 +324,7 @@ export function PlanScreen() {
         {waterState === 'error' ? <p className="text-xs text-muted">Couldn’t look the water up (offline?). Set its type under Adjust.</p> : null}
       </section>
 
-      {type === 'coast' ? <TideCard tides={tides} offsetSec={forecast?.utcOffsetSec} /> : null}
+      {type === 'coast' ? <TideCard tides={tides} offsetSec={forecast?.utcOffsetSec} onRetry={() => setTideTry((n) => n + 1)} /> : null}
 
       {
         <details className="group rounded-md border border-border" open={waterState === 'error' || type === 'unknown'}>
@@ -382,7 +392,7 @@ export function PlanScreen() {
           {sourcesState === 'loading'
             ? null
             : recs.map((r, i) => (
-                <RecCard key={r.profile.id} rec={r} open={i === 0} place={place} forecast={forecast} waterTempC={temp.c} tideEvents={tides?.events} />
+                <RecCard key={r.profile.id} rec={r} open={i === 0} place={place} forecast={forecast} waterTempC={temp.c} tideEvents={tideEvents} />
               ))}
         </section>
       ) : null}
@@ -487,7 +497,7 @@ function RecCard({
           <Row label="Tide">
             Best on {PREF_TEXT[tide.pref]}. {tide.why}
             {tideTimes.length ? (
-              <span className="mt-0.5 block font-semibold">Next: {tideTimes.map((w) => `${formatClockDay(w.start, offset)}–${formatClockDay(w.end, offset)}`).join(', ')}</span>
+              <span className="mt-0.5 block font-semibold">Next: {tideTimes.map((w) => formatSpan(w.start, w.end, offset)).join(', ')}</span>
             ) : null}
           </Row>
         ) : null}

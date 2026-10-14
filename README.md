@@ -11,20 +11,27 @@ that explains itself, and a catch log that never leaves your phone. Works offlin
   European coarse fish). Advice changes with water type, season (pre-spawn,
   spawn, summer, fall, cold, hot), water temperature (gauge, your thermometer,
   or an estimate from recent air temperature), clarity and how you like to
-  fish (bait, lures, fly). Falls back to "typical fish for this water" when
-  nothing is recorded, and says so. Salt water is out of scope for now.
+  fish (bait, lures, fly). Every fish gets a full list of bait, lures and
+  flies with this season's picks marked, plus one combined "Bring these" list.
+  Falls back to "typical fish for this water" when nothing is recorded, and
+  says so.
+- **Salt water**: 15 inshore fish on US and European coasts (striped bass,
+  redfish, speckled trout, flounder, snook, bluefish, sheepshead, surfperch,
+  rockfish and more). The tide now and the next highs and lows from the
+  nearest NOAA station, sea temperature, and each fish's best tide windows.
 - **Where to fish, from public data**: iNaturalist research-grade fish
   records near the water and as a map layer; French national electrofishing
   surveys (OFB via Hub'Eau); recent stocking in Montana, Washington, New York
   and Massachusetts; OpenStreetMap fishing piers, ramps and spots.
-- **Rig guide**: 19 rigs drawn as diagrams with step-by-step setup.
+- **Rig guide**: 22 rigs drawn as diagrams with step-by-step setup.
 
-- **Map**: streams and rivers drawn from the basemap's own vector tiles; tap one
-  for nearby gauges, your notes, your regulations link and your catches there.
-  Street, USGS topo and USGS satellite basemaps. Custom markers (access,
-  parking, bridge, good run, camp, note). Optional OpenStreetMap layer of fly
-  shops, ramps, campsites, parking and road bridges near streams, always marked
-  as unverified access.
+- **Map**: opens on your location. Streams and rivers drawn from the basemap's
+  own vector tiles; tap one for nearby gauges, your notes, your regulations
+  link and your catches there. Street, USGS topo and USGS satellite basemaps.
+  Public land shaded by manager (USGS PAD-US); tap it for the name, the agency
+  and whether the public can get in. Custom markers (access, parking, bridge,
+  good run, camp, note). OpenStreetMap layer of fly shops, ramps, campsites,
+  parking and road bridges near streams, always marked as unverified access.
 - **Gauges**: live flow, gage height and water temperature from the USGS Water
   Data API, colour-coded by trout temperature bands, with 7-day charts.
 - **Forecast**: 7 days of weather, sun and moon, and an hourly bite score whose
@@ -78,6 +85,9 @@ vite-plugin-pwa with a custom Workbox service worker (`src/sw.ts`). No backend.
 | fish surveys (France) | Hub'Eau, OFB electrofishing | within the search radius of the water |
 | stocking | Montana FWP, WDFW, NYSDEC, MassWildlife open data | MT by area; the others by water name |
 | search | Nominatim | on submit only, per its usage policy |
+| public land | USGS PAD-US (vector tiles, fee and public-access feature services) | public domain; tap lookups cached 30 days when complete |
+| tides | NOAA CO-OPS (station search and hi/lo predictions) | US coasts; stations within 25 miles |
+| sea temperature | Open-Meteo Marine | model value for nearby open water |
 
 The legacy USGS WaterServices API shuts down on 2027-02-22; this app already
 uses its replacement.

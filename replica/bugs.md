@@ -56,5 +56,5 @@ and has a test that would catch it again.
 
 ## To check (not reproduced)
 
-- Live OpenFreeMap tiles: confirm the `waterway` layer carries `class` river/stream and names at z12+.
+- ~~Live OpenFreeMap tiles: confirm the `waterway` layer carries `class` river/stream and names at z12+.~~ Checked 2026-10-14: decoded live z12 and z14 tiles on the Gallatin River carry `class` river/stream and names (Gallatin River, Spanish Creek, Hyde Creek); unnamed streams have no name, as expected.
 - Overpass `around` queries can be slow in dense cities; 30 s timeout may need tuning.

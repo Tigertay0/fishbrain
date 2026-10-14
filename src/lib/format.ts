@@ -14,13 +14,23 @@ export function formatClock(t: number, offsetSec?: number): string {
 
 /** Clock time with "tomorrow" (or the weekday) when it isn't today at that place. */
 export function formatClockDay(t: number, offsetSec: number | undefined, now: number = Date.now()): string {
-  const off = (ms: number) => (offsetSec ?? -new Date(ms).getTimezoneOffset() * 60) * 1000
-  const day = (ms: number) => Math.floor((ms + off(ms)) / 86_400_000)
-  const diff = day(t) - day(now)
-  const clock = formatClock(t, offsetSec)
-  if (diff === 0) return clock
-  if (diff === 1) return `${clock} tomorrow`
-  return `${new Date(t + off(t)).toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' })} ${clock}`
+  return withDay(t, formatClock(t, offsetSec), offsetSec, now)
+}
+
+/** A time span, naming the day once: "6:10–9:40 PM", "1:05–3:30 AM tomorrow", "11:20 PM–2:10 AM tomorrow". */
+export function formatSpan(start: number, end: number, offsetSec: number | undefined, now: number = Date.now()): string {
+  if (localDay(start, offsetSec) !== localDay(end, offsetSec)) return `${formatClockDay(start, offsetSec, now)}–${formatClockDay(end, offsetSec, now)}`
+  return withDay(start, `${formatClock(start, offsetSec)}–${formatClock(end, offsetSec)}`, offsetSec, now)
+}
+
+const offsetMs = (ms: number, offsetSec?: number) => (offsetSec ?? -new Date(ms).getTimezoneOffset() * 60) * 1000
+const localDay = (ms: number, offsetSec?: number) => Math.floor((ms + offsetMs(ms, offsetSec)) / 86_400_000)
+
+function withDay(t: number, text: string, offsetSec: number | undefined, now: number): string {
+  const diff = localDay(t, offsetSec) - localDay(now, offsetSec)
+  if (diff === 0) return text
+  if (diff === 1) return `${text} tomorrow`
+  return `${new Date(t + offsetMs(t, offsetSec)).toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' })} ${text}`
 }
 
 export function formatHour(t: number, offsetSec?: number): string {

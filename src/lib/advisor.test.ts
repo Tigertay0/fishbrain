@@ -179,6 +179,11 @@ describe('plan', () => {
     expect(coastFor(25.8, -80.1)).toBe('se') // Miami
     expect(coastFor(36.9, -122.0)).toBe('pacific')
     expect(coastFor(47.3, -2.5)).toBe('eu')
+    expect(coastFor(30.33, -81.4)).toBe('se') // Jacksonville is Atlantic
+    expect(coastFor(21.3, -157.8)).toBeUndefined() // Hawaii
+    expect(coastFor(18.4, -66.1)).toBeUndefined() // Puerto Rico
+    expect(coastFor(-33.9, 151.2)).toBeUndefined() // Sydney
+    expect(plan({ ...base, lat: 21.3, lon: -157.8, water: { type: 'coast' } }).unsupported).toMatch(/US and European coasts/)
     expect(defaultSaltTargets('gulf', 26.5)).toContain('snook')
     expect(defaultSaltTargets('gulf', 30.2)).not.toContain('snook')
   })
