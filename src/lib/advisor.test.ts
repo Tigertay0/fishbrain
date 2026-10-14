@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { activityFor, colorsFor, defaultTargets, estimateWaterTempC, isWarming, packList, phaseFor, plan, region, tacticFor, type PlanInput } from './advisor'
 import { PROFILE_BY_ID, PROFILES, profileForLatin } from './species'
 import { RIG_BY_ID, RIGS } from './rigs'
+import { coastFor, defaultSaltTargets } from './saltwater'
 import { classify, parseAirHistory, pickWater, waterQuery } from './waters'
 import { mergePresence, parseCounts, parseHubEau, parseSightings } from './publicdata'
 import { adapterFor, likeTerm, stockedLatin } from './stocking'
@@ -142,8 +143,44 @@ describe('plan', () => {
     expect(fr.recs.map((r) => r.profile.id)).toContain('carp')
     expect(defaultTargets('stream', 'na', 44)).toContain('rainbow')
   })
-  it('refuses salt water instead of guessing', () => {
-    expect(plan({ ...base, water: { type: 'coast' } }).unsupported).toMatch(/Saltwater/)
+  it('salt water: coastal fish for the coast, with tide reasons and saltwater rules', () => {
+    const tide = { stage: 'rising' as const, prev: { t: 0, type: 'low' as const, ft: 0.5 }, next: { t: 1, type: 'high' as const, ft: 2.1 }, minutesToNext: 120 }
+    const gulf = plan({ ...base, lat: 29.3, lon: -94.8, water: { type: 'coast' }, waterTempC: fToC(66), tide })
+    expect(gulf.unsupported).toBeUndefined()
+    const ids = gulf.recs.map((r) => r.profile.id)
+    expect(ids).toEqual(expect.arrayContaining(['redfish', 'seatrout']))
+    expect(ids).not.toContain('largemouth')
+    const red = gulf.recs.find((r) => r.profile.id === 'redfish')!
+    expect(red.why.join(' ')).toMatch(/Tide is rising \(incoming\): that suits them/)
+    expect(red.rigs.map((r) => r.id)).toContain('popping-cork')
+    expect(gulf.notes.join(' ')).toMatch(/licence/)
+    expect(gulf.notes.join(' ')).not.toMatch(/live bait between waters/)
+    // Flounder want the outgoing tide: they rank higher on it than on the incoming (or drop out of the top five).
+    const rank = (recs: typeof gulf.recs) => {
+      const i = recs.findIndex((r) => r.profile.id === 'flounder')
+      return i < 0 ? 99 : i
+    }
+    const falling = plan({ ...base, lat: 29.3, lon: -94.8, water: { type: 'coast' }, waterTempC: fToC(66), tide: { ...tide, stage: 'falling' } })
+    expect(rank(falling.recs)).toBeLessThan(rank(gulf.recs))
+  })
+  it('salt water: records pick saltwater fish; no tide data says so', () => {
+    const p = plan({ ...base, lat: 41.3, lon: -72.0, water: { type: 'coast' }, presence: [{ latin: 'Morone saxatilis', common: 'Striped Bass', count: 12 }] })
+    expect(p.recs[0].profile.id).toBe('striper')
+    expect(p.recs[0].rigs.map((r) => r.id)).toContain('fishfinder')
+    expect(p.notes.join(' ')).toMatch(/No tide station data/)
+    // The same record in a reservoir is the freshwater striper.
+    const lake = plan({ ...base, water: { type: 'reservoir' }, presence: [{ latin: 'Morone saxatilis', common: 'Striped Bass', count: 12 }] })
+    expect(lake.recs[0].profile.id).toBe('whitebass')
+  })
+  it('knows which coast it is on', () => {
+    expect(coastFor(41.3, -72.0)).toBe('ne')
+    expect(coastFor(32.8, -79.9)).toBe('se') // Charleston
+    expect(coastFor(27.9, -82.6)).toBe('gulf') // Tampa
+    expect(coastFor(25.8, -80.1)).toBe('se') // Miami
+    expect(coastFor(36.9, -122.0)).toBe('pacific')
+    expect(coastFor(47.3, -2.5)).toBe('eu')
+    expect(defaultSaltTargets('gulf', 26.5)).toContain('snook')
+    expect(defaultSaltTargets('gulf', 30.2)).not.toContain('snook')
   })
   it('colour advice follows clarity', () => {
     expect(colorsFor('clear', [])).toMatch(/Natural/)

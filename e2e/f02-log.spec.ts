@@ -99,6 +99,7 @@ test.describe('F02 log a catch at the water', () => {
   })
 
   test('F05 logbook filter and stats', async ({ page }) => {
+    test.setTimeout(60_000) // logs four catches
     await mockNetwork(page)
     await logCatch(page, { species: 'Brown trout', length: '14' })
     await logCatch(page, { species: 'Brown trout', length: '20' })

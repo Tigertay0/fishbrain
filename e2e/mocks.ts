@@ -70,6 +70,15 @@ export async function mockNetwork(page: Page, opts: MockOptions = {}): Promise<M
       },
     })
   })
+  // NOAA tides: one station near the test coast, and a high/low every ~6 h around now.
+  await page.route(/api\.tidesandcurrents\.noaa\.gov\/mdapi/, (r) =>
+    r.fulfill({ json: { stationList: [{ stationId: '8735180', name: 'DAUPHIN ISLAND', lat: PLACES.coast.lat + 0.02, lon: PLACES.coast.lon }] } }),
+  )
+  await page.route(/api\.tidesandcurrents\.noaa\.gov\/api/, (r) => r.fulfill({ json: { predictions: tidePredictions() } }))
+  await page.route(/marine-api\.open-meteo\.com/, (r) => {
+    const hour = new Date().toISOString().slice(0, 13)
+    return r.fulfill({ json: { utc_offset_seconds: 0, hourly: { time: [`${hour}:00`], sea_surface_temperature: [21.5] } } })
+  })
   await page.route(/services3\.arcgis\.com\/.*FISH_PLANTS/, (r) => {
     counts.stocking++
     return r.fulfill({
@@ -240,4 +249,11 @@ export function readStore(page: Page, store: string): Promise<Record<string, unk
       }),
     store,
   )
+}
+
+/** NOAA-shaped highs and lows (GMT) from yesterday to two days out, so "now" always falls between turns. */
+function tidePredictions() {
+  const start = Date.now() - 26 * 3600_000
+  const fmt = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace('T', ' ')
+  return Array.from({ length: 16 }, (_, i) => ({ t: fmt(start + i * 6.2 * 3600_000), v: i % 2 ? '0.3' : '2.1', type: i % 2 ? 'L' : 'H' }))
 }

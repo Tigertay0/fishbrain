@@ -8,6 +8,7 @@ import { planArea, MAX_AREA_TILES } from './offline'
 import { streamKey } from './streams'
 import { waterFromGaugeName } from '../sheets/GaugeSheet'
 import { shouldLocateOnOpen } from './locate'
+import { formatClockDay } from './format'
 import { mergeSettings } from './settings'
 import { DEFAULT_SETTINGS } from './db'
 
@@ -182,5 +183,15 @@ describe('settings migration', () => {
     expect(old.layersRev).toBe(2)
     expect(mergeSettings({ ...old, layers: { ...old.layers, amenities: false } }).layers.amenities).toBe(false)
     expect(mergeSettings(undefined).layers.amenities).toBe(true)
+  })
+})
+
+describe('clock with day', () => {
+  it('says tomorrow (or the weekday) when a time is not today at that place', () => {
+    const off = -5 * 3600 // UTC-5
+    const now = Date.parse('2026-10-14T20:00Z') // 3 PM local
+    expect(formatClockDay(Date.parse('2026-10-14T23:00Z'), off, now)).not.toMatch(/tomorrow/) // 6 PM today
+    expect(formatClockDay(Date.parse('2026-10-15T06:00Z'), off, now)).toMatch(/tomorrow$/) // 1 AM tomorrow local
+    expect(formatClockDay(Date.parse('2026-10-16T18:00Z'), off, now)).toMatch(/^Fri /)
   })
 })

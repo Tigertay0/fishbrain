@@ -94,7 +94,7 @@ export function addOverlays(map: MlMap, basemap: Basemap): void {
         type: 'fill',
         source: BASE_SOURCE,
         'source-layer': 'water',
-        filter: ['match', ['get', 'class'], ['lake', 'river', 'pond', 'dock'], true, false],
+        filter: ['match', ['get', 'class'], ['lake', 'river', 'pond', 'dock', 'ocean'], true, false],
         paint: { 'fill-color': water, 'fill-opacity': 0.01 },
       },
       'streams-casing',

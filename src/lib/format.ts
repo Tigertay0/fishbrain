@@ -12,6 +12,17 @@ export function formatClock(t: number, offsetSec?: number): string {
   return new Date(t + offsetSec * 1000).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' })
 }
 
+/** Clock time with "tomorrow" (or the weekday) when it isn't today at that place. */
+export function formatClockDay(t: number, offsetSec: number | undefined, now: number = Date.now()): string {
+  const off = (ms: number) => (offsetSec ?? -new Date(ms).getTimezoneOffset() * 60) * 1000
+  const day = (ms: number) => Math.floor((ms + off(ms)) / 86_400_000)
+  const diff = day(t) - day(now)
+  const clock = formatClock(t, offsetSec)
+  if (diff === 0) return clock
+  if (diff === 1) return `${clock} tomorrow`
+  return `${new Date(t + off(t)).toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' })} ${clock}`
+}
+
 export function formatHour(t: number, offsetSec?: number): string {
   const d = new Date(offsetSec == null ? t : t + offsetSec * 1000)
   return d.toLocaleTimeString(undefined, { hour: 'numeric', ...(offsetSec == null ? {} : { timeZone: 'UTC' }) })

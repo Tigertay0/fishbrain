@@ -65,10 +65,22 @@ test.describe('F08 what to use at this water', () => {
     await expect(page.getByRole('region', { name: 'Best bets' }).locator('details').first()).toContainText(/Bluegill|Largemouth|Catfish|Crappie/)
   })
 
-  test('F08-E2 salt water is out of scope, plainly', async ({ page }) => {
+  test('F08-E2 salt water: the tide now, coastal fish with saltwater rigs, and tide timing per fish', async ({ page }) => {
+    const check = guard(page)
     await mockNetwork(page)
     await page.goto(`/plan?lat=${PLACES.coast.lat}&lon=${PLACES.coast.lon}`)
-    await expect(page.getByText(/Saltwater advice isn’t built yet/)).toBeVisible()
+    await expect(page.getByTestId('conditions-summary')).toContainText(/Coast · \d+°F water \(sea surface\)/)
+    const tides = page.getByRole('region', { name: 'Tides' })
+    await expect(tides).toContainText(/Rising|Falling|Slack/)
+    await expect(tides).toContainText(/Dauphin Island/)
+    await expect(tides.getByRole('listitem').first()).toContainText(/High|Low/)
+    const first = page.getByRole('region', { name: 'Best bets' }).locator('details').first()
+    await expect(first).toContainText(/Redfish|Speckled trout|Flounder|Sheepshead|Black drum|Spanish mackerel/)
+    await expect(first).toContainText(/Tide:.*Best on/)
+    await expect(first).not.toContainText(/Largemouth|Bluegill/)
+    await expect(page.getByText(/own licence/)).toBeVisible()
+    await axe(page)
+    check()
   })
 
   test('F08-H4 France: official electrofishing surveys count as evidence', async ({ page }) => {

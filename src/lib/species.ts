@@ -2,12 +2,16 @@
 // angling practice. Temperatures are °F and approximate: local strains,
 // forage and pressure all shift them. Advice is a starting point, not a rule.
 import type { RigId } from './rigs'
+import type { TidePref } from './tides'
+import { SALT_PROFILES } from './saltwater'
 
 export type { Method } from './rigs'
-export type WaterType = 'stream' | 'river' | 'lake' | 'pond' | 'reservoir'
+export type WaterType = 'stream' | 'river' | 'lake' | 'pond' | 'reservoir' | 'coast'
 export type Region = 'na' | 'eu'
 export type Phase = 'cold' | 'prespawn' | 'spawn' | 'summer' | 'fall' | 'hot'
-export type Group = 'trout' | 'bass' | 'panfish' | 'perch' | 'pike' | 'catfish' | 'carp' | 'temperate-bass' | 'coarse'
+export type Group = 'trout' | 'bass' | 'panfish' | 'perch' | 'pike' | 'catfish' | 'carp' | 'temperate-bass' | 'coarse' | 'saltwater'
+/** Stretches of coast with different inshore fish. */
+export type Coast = 'ne' | 'se' | 'gulf' | 'pacific' | 'eu'
 
 export type Tactic = {
   /** where to look, for still water (lakes, ponds) and moving water (streams, rivers) */
@@ -35,6 +39,9 @@ export type Profile = {
   tactics: { default: Tactic } & Partial<Record<Phase, Partial<Tactic>>>
   tackle: { line: string; hooks: string }
   notes?: string[]
+  /** saltwater only: which coasts, and the stage of the tide that suits them */
+  coasts?: Coast[]
+  tide?: { pref: TidePref; why: string }
 }
 
 const TROUT_TACTICS: Profile['tactics'] = {
@@ -76,7 +83,7 @@ const TROUT_TACTICS: Profile['tactics'] = {
 
 const TROUT_NOTES = ['Many trout waters are flies or artificial lures only. Check the rules for this water.']
 
-export const PROFILES: Profile[] = [
+const FRESH_PROFILES: Profile[] = [
   {
     id: 'largemouth',
     name: 'Largemouth bass',
@@ -646,15 +653,27 @@ export const PROFILES: Profile[] = [
   },
 ]
 
+/** Every fish in the guide: fresh water, then salt water (saltwater.ts). */
+export const PROFILES: Profile[] = [...FRESH_PROFILES, ...SALT_PROFILES]
+
 export const PROFILE_BY_ID: Record<string, Profile> = Object.fromEntries(PROFILES.map((p) => [p.id, p]))
 
-/** Matches a scientific name (from iNaturalist or an agency) to a profile: exact species first, then genus. */
-export function profileForLatin(latin: string): Profile | undefined {
+export type Waters = 'fresh' | 'salt' | 'any'
+
+/**
+ * Matches a scientific name (from iNaturalist or an agency) to a profile: exact
+ * species first, then genus. `waters` picks the pool: a striped bass recorded in
+ * a reservoir is a freshwater striper, one on a beach is a surf fish.
+ */
+export function profileForLatin(latin: string, waters: Waters = 'any'): Profile | undefined {
   const name = latin.trim()
-  const exact = PROFILES.find((p) => p.latin.includes(name))
-  if (exact) return exact
   const genus = name.split(/\s+/)[0]
-  return PROFILES.find((p) => p.genus?.includes(genus))
+  const pools = waters === 'fresh' ? [FRESH_PROFILES] : waters === 'salt' ? [SALT_PROFILES] : [FRESH_PROFILES, SALT_PROFILES]
+  for (const pool of pools) {
+    const hit = pool.find((p) => p.latin.includes(name)) ?? pool.find((p) => p.genus?.includes(genus))
+    if (hit) return hit
+  }
+  return undefined
 }
 
 /** Small fish that tell you what predators are eating, and so which lure colour to pick. */

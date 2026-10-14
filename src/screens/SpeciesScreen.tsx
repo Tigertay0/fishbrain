@@ -12,6 +12,7 @@ const GROUPS: { id: string; label: string; groups: Group[] }[] = [
   { id: 'predators', label: 'Pike, walleye, perch', groups: ['pike', 'perch'] },
   { id: 'bottom', label: 'Catfish and carp', groups: ['catfish', 'carp'] },
   { id: 'coarse', label: 'Coarse fish', groups: ['coarse'] },
+  { id: 'salt', label: 'Saltwater', groups: ['saltwater'] },
 ]
 
 export function SpeciesScreen() {
@@ -55,6 +56,12 @@ export function SpeciesScreen() {
                   <dt className="font-semibold">How</dt>
                   <dd>{t.how}</dd>
                 </div>
+                {p.tide ? (
+                  <div>
+                    <dt className="font-semibold">Tide</dt>
+                    <dd>{p.tide.why}</dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt className="font-semibold">Rigs</dt>
                   <dd className="flex flex-wrap gap-x-3">

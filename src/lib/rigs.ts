@@ -52,6 +52,9 @@ export type RigId =
   | 'wire-float'
   | 'hair-rig'
   | 'feeder'
+  | 'fishfinder'
+  | 'popping-cork'
+  | 'high-low'
 
 export type Rig = {
   id: RigId
@@ -447,6 +450,72 @@ export const RIGS: Rig[] = [
       'Pack the feeder with groundbait, cast to the same spot every time and watch the rod tip.',
     ],
     tips: ['Accuracy matters more than distance: clip the line so every cast lands on the bait pile.'],
+  },
+  {
+    id: 'fishfinder',
+    name: 'Fish-finder surf rig',
+    summary: 'A sinker on a sliding clip above a swivel and leader: the fish takes the bait without feeling the weight.',
+    when: 'Surf, jetties and piers: striped bass, drum, bluefish and flounder.',
+    methods: ['bait'],
+    parts: [
+      { kind: 'line', label: '20–30 lb braid or 15–20 lb mono' },
+      { kind: 'bell', label: 'Pyramid sinker, 2–6 oz, on a sinker slide' },
+      { kind: 'bead', label: 'Bead (protects the knot)' },
+      { kind: 'swivel', label: 'Barrel swivel' },
+      { kind: 'line', label: '18–30 in leader, 30–50 lb' },
+      { kind: 'circle', label: '4/0–8/0 circle hook, cut bait or clam' },
+    ],
+    steps: [
+      'Slide a fish-finder clip (or sinker slide) onto the main line, then a bead.',
+      'Tie the main line to a barrel swivel.',
+      'Tie 18–30 in of heavier leader to the swivel and a circle hook to the leader.',
+      'Clip on a pyramid sinker heavy enough to hold the bottom, bait up, cast past the breakers and set the rod in a sand spike.',
+    ],
+    tips: ['If the sinker rolls down the beach, go heavier or use a wired (sputnik) sinker.', 'Many states require circle hooks when bait fishing for striped bass.'],
+  },
+  {
+    id: 'popping-cork',
+    name: 'Popping cork rig',
+    summary: 'A cork that pops and gurgles when you twitch it, with a shrimp or soft plastic hanging below: the noise draws fish from a distance.',
+    when: 'Redfish and speckled trout over grass flats, oyster bars and marsh edges.',
+    methods: ['bait', 'lure'],
+    parts: [
+      { kind: 'line', label: '10–20 lb braid' },
+      { kind: 'bobber', label: 'Popping cork' },
+      { kind: 'line', label: '18–36 in fluorocarbon leader, 15–20 lb' },
+      { kind: 'jighead', label: '1/8–1/4 oz jighead or #1 kahle hook' },
+      { kind: 'lure', label: 'Live shrimp or soft-plastic shrimp' },
+    ],
+    steps: [
+      'Tie the main line to the top of the cork (most have a wire through them, with a swivel at each end).',
+      'Tie 18–36 in of leader to the bottom, so the bait hangs just above the grass or bottom.',
+      'Add a light jighead or kahle hook with a live shrimp or soft plastic.',
+      'Cast, then pop the cork with a sharp twitch every 10–20 seconds and let it sit in between.',
+    ],
+    tips: ['Picking up grass? Shorten the leader.', 'If the cork goes under or swims sideways, reel tight and sweep the rod.'],
+  },
+  {
+    id: 'high-low',
+    name: 'High-low bottom rig',
+    summary: 'Two hooks on dropper loops above a sinker, so you fish two baits just off the bottom.',
+    when: 'Pilings, rocks, piers and the surf: sheepshead, tautog, black drum, croaker and surfperch.',
+    methods: ['bait'],
+    parts: [
+      { kind: 'line', label: '20–30 lb line' },
+      { kind: 'swivel', label: 'Swivel' },
+      { kind: 'line', label: 'Dropper loop' },
+      { kind: 'hook', label: '#1–2/0 short-shank hook: crab, shrimp or clam' },
+      { kind: 'line', label: 'Second dropper loop, 12 in lower' },
+      { kind: 'hook', label: '#1–2/0 hook' },
+      { kind: 'bell', label: 'Bank or pyramid sinker, 1–4 oz' },
+    ],
+    steps: [
+      'Tie a swivel to the main line and 2–3 ft of leader to the swivel.',
+      'Tie two dropper loops about 12 in apart, the lower one a few inches above the end.',
+      'Loop a hook onto each dropper and tie the sinker to the end.',
+      'Lower it straight down beside the structure, lift until the sinker just touches, and keep the line tight.',
+    ],
+    tips: ['Sheepshead and tautog nibble: when you feel weight, set the hook hard and pull them away from the structure.'],
   },
 ]
 

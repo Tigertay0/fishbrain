@@ -2,10 +2,12 @@
 // conditions in, ranked recommendations with their reasons out.
 import { RIG_BY_ID, type Method, type Rig } from './rigs'
 import { forageFor, PROFILE_BY_ID, PROFILES, profileForLatin, type Phase, type Profile, type Region, type Tactic, type WaterType } from './species'
+import { coastFor, defaultSaltTargets } from './saltwater'
+import { PREF_TEXT, STAGE_TEXT, stageFits, type TideNow } from './tides'
 import { cToF } from './units'
 
 export type Clarity = 'clear' | 'stained' | 'muddy'
-export type WaterKind = WaterType | 'coast' | 'unknown'
+export type WaterKind = WaterType | 'unknown'
 
 export type Presence = {
   latin: string
@@ -28,6 +30,8 @@ export type PlanInput = {
   lowLight?: boolean
   windKmh?: number
   pressureTrend?: 'rising' | 'falling' | 'steady'
+  /** salt water: the tide at the nearest station right now, when known */
+  tide?: TideNow
 }
 
 export type Activity = 'high' | 'medium' | 'low'
@@ -183,24 +187,14 @@ export function plan(input: PlanInput): Plan {
   const tempF = input.waterTempC != null ? cToF(input.waterTempC) : undefined
   const warming = isWarming(input.date, input.lat, input.warming)
   const type = input.water.type
+  const salt = type === 'coast'
 
-  if (type === 'coast') {
-    return {
-      recs: [],
-      otherFish: input.presence,
-      forage: [],
-      notes: [],
-      fromDefaults: false,
-      unsupported: 'Saltwater advice isn’t built yet. Tides change everything; this guide covers fresh water.',
-    }
-  }
-
-  // Evidence: public observations grouped by profile.
+  // Evidence: public observations grouped by profile, from the right pool of fish.
   const byProfile = new Map<string, { count: number; names: Set<string> }>()
   const otherFish: Presence[] = []
   const forage = new Set<string>()
   for (const p of input.presence) {
-    const prof = profileForLatin(p.latin)
+    const prof = profileForLatin(p.latin, salt ? 'salt' : 'fresh')
     const f = forageFor(p.latin)
     if (f) forage.add(f)
     if (!prof) {
@@ -213,9 +207,8 @@ export function plan(input: PlanInput): Plan {
     byProfile.set(prof.id, e)
   }
   const fromDefaults = byProfile.size === 0
-  const candidates = fromDefaults
-    ? defaultTargets(type, reg, input.lat, tempF).map((id) => PROFILE_BY_ID[id]).filter(Boolean)
-    : [...byProfile.keys()].map((id) => PROFILE_BY_ID[id])
+  const defaults = salt ? defaultSaltTargets(coastFor(input.lat, input.lon), input.lat) : defaultTargets(type, reg, input.lat, tempF)
+  const candidates = fromDefaults ? defaults.map((id) => PROFILE_BY_ID[id]).filter(Boolean) : [...byProfile.keys()].map((id) => PROFILE_BY_ID[id])
 
   const recs = candidates.map((p) => recommend(p, input, tempF, warming, byProfile.get(p.id), [...forage], fromDefaults))
   recs.sort((a, b) => b.score - a.score)
@@ -224,8 +217,13 @@ export function plan(input: PlanInput): Plan {
   if (tempF == null) notes.push('No water temperature, so season and activity are guesses from the calendar. Add a reading for sharper advice.')
   if (input.pressureTrend === 'falling') notes.push('Pressure is falling: fish often feed hard before a front. Good time to be out.')
   if (input.pressureTrend === 'rising') notes.push('Pressure is rising after a front: slow down and downsize.')
-  if (!moving(type) && (input.windKmh ?? 0) >= 15) notes.push('Windy: fish the shore the wind is blowing into. Waves push baitfish there, and predators follow.')
-  notes.push('Moving live bait between waters spreads disease and invasive species, and is illegal in many places. Buy bait locally.')
+  if (salt) {
+    if (!input.tide) notes.push('No tide station data here, so tide timing isn’t in the advice. Most inshore fish feed best in moving water, the hours between the turns.')
+    notes.push('Salt water usually needs its own licence or registry, and size, bag and season limits are strict and change often. Check them before you keep a fish.')
+  } else {
+    if (!moving(type) && (input.windKmh ?? 0) >= 15) notes.push('Windy: fish the shore the wind is blowing into. Waves push baitfish there, and predators follow.')
+    notes.push('Moving live bait between waters spreads disease and invasive species, and is illegal in many places. Buy bait locally.')
+  }
 
   return { recs: recs.slice(0, 5), otherFish, forage: [...forage], notes, fromDefaults }
 }
@@ -246,11 +244,13 @@ function recommend(
   const why: string[] = []
   const warnings: string[] = [...(p.notes ?? [])]
 
-  // Score: evidence × activity × suits this kind of water.
+  // Score: evidence × activity × suits this kind of water × (salt water) the tide right now.
   const evidenceW = evidence ? 1 + Math.log10(evidence.count + 1) : 0.6
   const activityW = activity === 'high' ? 1 : activity === 'medium' ? 0.7 : 0.4
   const waterW = type === 'unknown' || p.waters.includes(type as WaterType) ? 1 : 0.5
-  const score = Math.round(evidenceW * activityW * waterW * 100) / 100
+  const tideFits = p.tide && input.tide ? stageFits(input.tide.stage, p.tide.pref) : undefined
+  const tideW = tideFits == null ? 1 : tideFits ? 1.15 : 0.9
+  const score = Math.round(evidenceW * activityW * waterW * tideW * 100) / 100
 
   const evidenceText = evidence
     ? `${evidence.count} public record${evidence.count === 1 ? '' : 's'} nearby (${[...evidence.names].slice(0, 2).join(', ')})`
@@ -270,6 +270,10 @@ function recommend(
   }
   why.push(`${PHASE_LABEL[phase]}${phase === 'spawn' ? '' : warming ? ', season warming' : ', season cooling'}.`)
   if (input.lowLight) why.push('Low light right now: fish move shallower and chase more.')
+  if (p.tide && input.tide) {
+    const now = STAGE_TEXT[input.tide.stage].toLowerCase()
+    why.push(tideFits ? `Tide is ${now}: that suits them (${PREF_TEXT[p.tide.pref]}).` : `Tide is ${now}; they do best in ${PREF_TEXT[p.tide.pref]}.`)
+  }
 
   // Method filter: keep rigs and lists that fit how the angler wants to fish.
   const m = input.method

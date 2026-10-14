@@ -15,11 +15,14 @@ import { solunarDay } from '../lib/solunar'
 import { bestWindows, scoreDay } from '../lib/bite'
 import { nearestGauges } from '../lib/usgs'
 import { useGauges } from '../lib/store'
-import { formatClock, formatDate } from '../lib/format'
+import { formatClock, formatClockDay, formatDate } from '../lib/format'
 import { cToF, formatTemp, fToC } from '../lib/units'
 import { formatCoords } from '../lib/geo'
 import { MINUTE } from '../lib/cache'
 import type { Method } from '../lib/rigs'
+import { loadTides, nearestTideStation, PREF_TEXT, tideNow, tideWindows, type TideEvent } from '../lib/tides'
+import { loadSeaTemp } from '../lib/marine'
+import { TideCard, type Tides } from '../components/TideCard'
 
 type Place = { lat: number; lon: number }
 
@@ -29,6 +32,7 @@ const TYPE_OPTIONS: { value: WaterKind; label: string }[] = [
   { value: 'lake', label: 'Lake' },
   { value: 'pond', label: 'Pond' },
   { value: 'reservoir', label: 'Reservoir' },
+  { value: 'coast', label: 'Coast' },
 ]
 
 export function PlanScreen() {
@@ -105,7 +109,10 @@ export function PlanScreen() {
       inFrance(place.lat, place.lon)
         ? loadFrenchSurveys(place.lat, place.lon, Math.max(2, radius)).then((r) => live && setSources((x) => ({ ...x, surveys: r.data })))
         : Promise.resolve(),
-      loadStocking(place.lat, place.lon, Math.max(2, radius), water.name).then((r) => live && setSources((x) => ({ ...x, stocking: r ?? null }))),
+      // Stocking reports are a freshwater thing.
+      type === 'coast'
+        ? Promise.resolve()
+        : loadStocking(place.lat, place.lon, Math.max(2, radius), water.name).then((r) => live && setSources((x) => ({ ...x, stocking: r ?? null }))),
     ]
     void Promise.allSettled(tasks).then((rs) => live && setSourcesState(rs.some((r) => r.status === 'rejected') ? 'partial' : 'ok'))
     return () => {
@@ -128,7 +135,32 @@ export function PlanScreen() {
     }
   }, [place])
 
-  // Water temperature: your reading > a gauge on this river > an estimate from the air.
+  // Salt water: the nearest NOAA tide station and the sea temperature.
+  const [tides, setTides] = useState<Tides | null>()
+  const [seaC, setSeaC] = useState<number>()
+  useEffect(() => {
+    setTides(undefined)
+    setSeaC(undefined)
+    if (!place || type !== 'coast') return
+    let live = true
+    loadSeaTemp(place.lat, place.lon)
+      .then((r) => live && r.data != null && setSeaC(r.data))
+      .catch(() => {})
+    nearestTideStation(place.lat, place.lon)
+      .then(async (r) => {
+        if (!r.data) return live && setTides(null)
+        const station = r.data
+        const ev = await loadTides(station.id)
+        if (live) setTides({ station, events: ev.data })
+      })
+      .catch(() => live && setTides(null))
+    return () => {
+      live = false
+    }
+  }, [place, type])
+  const tideState = useMemo(() => (tides ? tideNow(tides.events, Date.now()) : undefined), [tides])
+
+  // Water temperature: your reading > a gauge on this river (or the sea surface) > an estimate from the air.
   const gauge = useMemo(() => {
     if (!place || !(type === 'stream' || type === 'river')) return undefined
     return nearestGauges(place, gauges.filter((g) => g.tempC != null), 5, 1)[0]
@@ -138,14 +170,18 @@ export function PlanScreen() {
     if (!manualTemp.trim() || !Number.isFinite(n)) return undefined
     return s.units === 'imperial' ? fToC(n) : n
   }, [manualTemp, s.units])
-  const temp: { c?: number; source: string } =
+  const temp: { c?: number; source: string; tag?: string } =
     manualC != null
-      ? { c: manualC, source: 'your reading' }
-      : gauge?.gauge.tempC != null
-        ? { c: gauge.gauge.tempC, source: `USGS gauge ${gauge.gauge.id}` }
-        : air && Number.isFinite(air.mean7C)
-          ? { c: estimateWaterTempC(type, air.mean7C, air.mean14C), source: 'estimate from 2 weeks of air temperature' }
+      ? { c: manualC, source: 'your reading', tag: 'your reading' }
+      : type === 'coast'
+        ? seaC != null
+          ? { c: seaC, source: 'sea surface temperature (Open-Meteo marine model)', tag: 'sea surface' }
           : { source: 'unknown' }
+        : gauge?.gauge.tempC != null
+          ? { c: gauge.gauge.tempC, source: `USGS gauge ${gauge.gauge.id}`, tag: 'gauge' }
+          : air && Number.isFinite(air.mean7C)
+            ? { c: estimateWaterTempC(type, air.mean7C, air.mean14C), source: 'estimate from 2 weeks of air temperature', tag: 'estimate' }
+            : { source: 'unknown' }
 
   const clarityGuess: Clarity = (type === 'stream' || type === 'river') && (air?.rain48hMm ?? 0) >= 12 ? 'stained' : 'clear'
   const clarityNow = clarity ?? clarityGuess
@@ -175,8 +211,9 @@ export function PlanScreen() {
       method,
       presence,
       ...conditions,
+      tide: tideState,
     })
-  }, [place, water, type, temp.c, air?.warming, clarityNow, method, presence, conditions])
+  }, [place, water, type, temp.c, air?.warming, clarityNow, method, presence, conditions, tideState])
 
   const recs = useMemo(() => {
     if (!result) return []
@@ -248,7 +285,7 @@ export function PlanScreen() {
   const methodLabel = { any: 'any method', bait: 'bait', lure: 'lures', fly: 'fly' }[method]
   const summary = [
     type === 'unknown' ? null : type.charAt(0).toUpperCase() + type.slice(1),
-    temp.c != null ? `${formatTemp(temp.c, s.units)} water${temp.source.startsWith('estimate') ? ' (estimate)' : temp.source === 'your reading' ? ' (your reading)' : ' (gauge)'}` : null,
+    temp.c != null ? `${formatTemp(temp.c, s.units)} water${temp.tag ? ` (${temp.tag})` : ''}` : null,
     clarityNow.charAt(0).toUpperCase() + clarityNow.slice(1),
     air ? (air.warming ? 'Warming' : 'Cooling') : null,
     methodLabel,
@@ -277,7 +314,9 @@ export function PlanScreen() {
         {waterState === 'error' ? <p className="text-xs text-muted">Couldn’t look the water up (offline?). Set its type under Adjust.</p> : null}
       </section>
 
-      {type === 'coast' ? null : (
+      {type === 'coast' ? <TideCard tides={tides} offsetSec={forecast?.utcOffsetSec} /> : null}
+
+      {
         <details className="group rounded-md border border-border" open={waterState === 'error' || type === 'unknown'}>
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-sm font-semibold">
             <span>Adjust: water, temperature, clarity, method</span>
@@ -327,7 +366,7 @@ export function PlanScreen() {
             <p className="text-xs text-muted">{formatCoords(place)}</p>
           </div>
         </details>
-      )}
+      }
 
       {result?.unsupported ? <p className="rounded-md bg-surface p-3">{result.unsupported}</p> : null}
 
@@ -342,7 +381,9 @@ export function PlanScreen() {
           {sourcesState === 'loading' ? null : <PackCard recs={recs} />}
           {sourcesState === 'loading'
             ? null
-            : recs.map((r, i) => <RecCard key={r.profile.id} rec={r} open={i === 0} place={place} forecast={forecast} waterTempC={temp.c} />)}
+            : recs.map((r, i) => (
+                <RecCard key={r.profile.id} rec={r} open={i === 0} place={place} forecast={forecast} waterTempC={temp.c} tideEvents={tides?.events} />
+              ))}
         </section>
       ) : null}
 
@@ -379,10 +420,31 @@ export function PlanScreen() {
   )
 }
 
-function RecCard({ rec, open, place, forecast, waterTempC }: { rec: Recommendation; open: boolean; place: Place; forecast?: Forecast; waterTempC?: number }) {
+function RecCard({
+  rec,
+  open,
+  place,
+  forecast,
+  waterTempC,
+  tideEvents,
+}: {
+  rec: Recommendation
+  open: boolean
+  place: Place
+  forecast?: Forecast
+  waterTempC?: number
+  tideEvents?: TideEvent[]
+}) {
   const r = rec
   const [rig, ...otherRigs] = r.rigs
   const offset = forecast?.utcOffsetSec
+  const tide = r.profile.tide
+  // The next two windows of the tide this fish likes, over the coming day.
+  const tideTimes = useMemo(() => {
+    if (!tide || !tideEvents?.length) return []
+    const now = Date.now()
+    return tideWindows(tideEvents, tide.pref, now, now + 24 * 60 * MINUTE).slice(0, 2)
+  }, [tide, tideEvents])
   const windows = useMemo(() => {
     const now = Date.now()
     const day = forecast?.days.find((d) => d.start <= now && now < d.start + 24 * 60 * MINUTE)
@@ -421,6 +483,14 @@ function RecCard({ rec, open, place, forecast, waterTempC }: { rec: Recommendati
         ) : null}
         <Row label="Where">{r.where}</Row>
         <Row label="How">{r.how}</Row>
+        {tide ? (
+          <Row label="Tide">
+            Best on {PREF_TEXT[tide.pref]}. {tide.why}
+            {tideTimes.length ? (
+              <span className="mt-0.5 block font-semibold">Next: {tideTimes.map((w) => `${formatClockDay(w.start, offset)}–${formatClockDay(w.end, offset)}`).join(', ')}</span>
+            ) : null}
+          </Row>
+        ) : null}
         {windows.length ? (
           <Row label="Best times today">{windows.map((w) => `${formatClock(w.start, offset)}–${formatClock(w.end, offset)}`).join(', ')}</Row>
         ) : null}

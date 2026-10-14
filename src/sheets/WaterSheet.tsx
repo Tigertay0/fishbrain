@@ -22,8 +22,9 @@ export function WaterSheet({ hit, onClose }: { hit: WaterHit; onClose: () => voi
     }
   }, [hit.lat, hit.lon])
 
-  const kind = hit.kind === 'river' ? 'River' : 'Lake or pond'
-  const q = `lat=${hit.lat}&lon=${hit.lon}${hit.name ? `&name=${encodeURIComponent(hit.name)}` : ''}`
+  const salt = hit.kind === 'ocean'
+  const kind = salt ? 'Sea or bay' : hit.kind === 'river' ? 'River' : 'Lake or pond'
+  const q = `lat=${hit.lat}&lon=${hit.lon}${hit.name ? `&name=${encodeURIComponent(hit.name)}` : ''}${salt ? '&type=coast' : ''}`
   return (
     <Sheet
       title={
