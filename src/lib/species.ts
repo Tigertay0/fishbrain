@@ -65,10 +65,7 @@ const TROUT_TACTICS: Profile['tactics'] = {
   },
 }
 
-const TROUT_NOTES = [
-  'Above 68°F (20°C) caught trout often die after release. Fish early, land them fast, or pick colder water.',
-  'Many trout waters are flies or artificial lures only. Check the rules for this water.',
-]
+const TROUT_NOTES = ['Many trout waters are flies or artificial lures only. Check the rules for this water.']
 
 export const PROFILES: Profile[] = [
   {
@@ -442,10 +439,11 @@ export const PROFILES: Profile[] = [
     idTips: 'Golden-brown with black and red spots, often with pale halos; few spots on the tail.',
     tactics: {
       ...TROUT_TACTICS,
+      default: { ...TROUT_TACTICS.default, how: `${TROUT_TACTICS.default.how} Browns feed most at dawn, dusk and under clouds; big ones eat streamers.` },
       spawn: { how: 'Browns are spawning: leave fish on the light gravel nests (redds) alone and don’t wade through them.' },
     },
     tackle: { line: '4–8 lb line, or 4X–5X tippet', hooks: '#14–#6 hooks' },
-    notes: [...TROUT_NOTES, 'Browns feed most at dawn, dusk and under clouds; big ones eat streamers.'],
+    notes: TROUT_NOTES,
   },
   {
     id: 'brook',

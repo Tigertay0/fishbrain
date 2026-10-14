@@ -247,6 +247,7 @@ function recommend(
   const usable = (xs: string[]) => xs.filter((x) => !/^Not usual/.test(x))
 
   if (p.group === 'trout' && tempF != null && tempF >= 68) warnings.unshift('Water is 68°F or warmer: hard on trout. Fish at first light or choose colder water.')
+  if (p.group === 'trout' && tempF == null) warnings.push('If the water is above 68°F (20°C), trout often die after release: check with a thermometer.')
   if (phase === 'spawn' && p.tempF.spawnSeason) warnings.unshift('Spawning season: check closed seasons, and release spawning fish quickly where you caught them.')
 
   return {

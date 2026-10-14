@@ -1,8 +1,8 @@
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import SunCalc from 'suncalc'
 import { ChevronDown, CloudSun, LocateFixed, MapPin, TriangleAlert } from 'lucide-react'
-import { Button, inputClass, Page, Segmented, StatTile } from '../components/ui'
+import { Button, inputClass, Page, Segmented } from '../components/ui'
 import { RigDiagram } from '../components/RigDiagram'
 import { useToast } from '../components/Toast'
 import { updateSettings, useSettings } from '../lib/settings'
@@ -184,9 +184,14 @@ export function PlanScreen() {
     return i > 0 ? [result.recs[i], ...result.recs.filter((_, j) => j !== i)] : result.recs
   }, [result, target])
 
+  const [locateFailed, setLocateFailed] = useState<string>()
   const locate = () => {
-    if (!navigator.geolocation) return toast('This device has no location service', 'error')
+    if (!navigator.geolocation) {
+      setLocateFailed('This device has no location service.')
+      return
+    }
     setLocating(true)
+    setLocateFailed(undefined)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocating(false)
@@ -197,25 +202,58 @@ export function PlanScreen() {
       },
       (err) => {
         setLocating(false)
-        toast(err.code === err.PERMISSION_DENIED ? 'Location permission is off for this site' : 'Could not get your location', 'error')
+        const msg = err.code === err.PERMISSION_DENIED ? 'Location is turned off for this site.' : 'Couldn’t get a GPS fix.'
+        setLocateFailed(msg)
+        if (place) toast(msg, 'error')
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60_000 },
     )
   }
 
+  // Opening the tab with no place yet: find the angler straight away, like logging a catch does.
+  const autoLocated = useRef(false)
+  useEffect(() => {
+    if (autoLocated.current || params.get('lat')) return
+    if (s.lastFix && Date.now() - s.lastFix.at < 2 * 60 * MINUTE) return
+    autoLocated.current = true
+    locate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   if (!place) {
     return (
       <Page title="What to use">
-        <p>Stand by the water (or pick it on the map) and get the rig, bait and spot for the fish that live there, from public records and today’s conditions.</p>
-        <Button variant="primary" busy={locating} onClick={locate}>
-          <LocateFixed size={18} /> Use my location
-        </Button>
-        <Button onClick={() => nav('/')}>
-          <MapPin size={18} /> Pick water on the map
-        </Button>
+        {locating || !locateFailed ? (
+          <div className="flex flex-col gap-3" aria-live="polite">
+            <p className="font-semibold">Finding the water you’re at…</p>
+            <div className="skeleton h-8 w-2/3" />
+            <div className="skeleton h-40" />
+          </div>
+        ) : (
+          <>
+            <p>{locateFailed} Pick the water on the map instead, or try again.</p>
+            <Button variant="primary" onClick={() => nav('/')}>
+              <MapPin size={18} /> Pick water on the map
+            </Button>
+            <Button busy={locating} onClick={locate}>
+              <LocateFixed size={18} /> Try my location again
+            </Button>
+          </>
+        )}
       </Page>
     )
   }
+
+  const methodLabel = { any: 'any method', bait: 'bait', lure: 'lures', fly: 'fly' }[method]
+  const summary = [
+    type === 'unknown' ? null : type.charAt(0).toUpperCase() + type.slice(1),
+    temp.c != null ? `${formatTemp(temp.c, s.units)} water${temp.source.startsWith('estimate') ? ' (estimate)' : temp.source === 'your reading' ? ' (your reading)' : ' (gauge)'}` : null,
+    clarityNow.charAt(0).toUpperCase() + clarityNow.slice(1),
+    air ? (air.warming ? 'Warming' : 'Cooling') : null,
+    methodLabel,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
     <Page
@@ -226,65 +264,83 @@ export function PlanScreen() {
         </Button>
       }
     >
-      <section aria-label="Water" className="flex flex-col gap-2">
+      <section aria-label="Water" className="flex flex-col gap-1">
         {waterState === 'loading' ? (
           <div className="skeleton h-8 w-2/3" aria-label="Finding the water" />
         ) : (
           <h2 className="text-xl font-bold">{water?.name ?? (type === 'unknown' ? 'Water near you' : `Unnamed ${type}`)}</h2>
         )}
-        <p className="text-xs text-muted">{formatCoords(place)}</p>
-        {type === 'coast' ? null : (
-          <Segmented<WaterKind> label="Type of water" value={type} onChange={setTypeOverride} options={TYPE_OPTIONS} />
-        )}
-        {waterState === 'error' ? <p className="text-xs text-muted">Couldn’t look the water up (offline?). Pick its type above.</p> : null}
+        <p className="text-sm" data-testid="conditions-summary">
+          {summary}
+        </p>
+        {waterState === 'error' ? <p className="text-xs text-muted">Couldn’t look the water up (offline?). Set its type under Adjust.</p> : null}
       </section>
 
-      <section aria-label="Conditions" className="flex flex-col gap-3">
-        <div className="grid grid-cols-2 gap-2">
-          <StatTile label="Water temp" value={formatTemp(temp.c, s.units)} hint={temp.source} tone={temp.source.startsWith('estimate') ? 'neutral' : 'good'} />
-          <StatTile label="Season" value={air ? (air.warming ? 'Warming' : 'Cooling') : '—'} hint={air ? `rain ${air.rain48hMm} mm in 48 h` : undefined} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor={tempId} className="text-sm font-semibold">
-            Have a thermometer? Water temp ({s.units === 'imperial' ? '°F' : '°C'})
-          </label>
-          <input id={tempId} inputMode="decimal" className={inputClass} value={manualTemp} onChange={(e) => setManualTemp(e.target.value)} placeholder={temp.c != null ? `about ${Math.round(s.units === 'imperial' ? cToF(temp.c) : temp.c)}` : ''} />
-        </div>
-        <Segmented<Clarity>
-          label={`Water clarity${clarity ? '' : ` (guess: ${clarityGuess})`}`}
-          value={clarityNow}
-          onChange={setClarity}
-          options={[
-            { value: 'clear', label: 'Clear' },
-            { value: 'stained', label: 'Stained' },
-            { value: 'muddy', label: 'Muddy' },
-          ]}
-        />
-        <Segmented<Method | 'any'>
-          label="How do you want to fish?"
-          value={method}
-          onChange={setMethod}
-          options={[
-            { value: 'any', label: 'Any' },
-            { value: 'bait', label: 'Bait' },
-            { value: 'lure', label: 'Lures' },
-            { value: 'fly', label: 'Fly' },
-          ]}
-        />
-      </section>
+      {type === 'coast' ? null : (
+        <details className="group rounded-md border border-border" open={waterState === 'error' || type === 'unknown'}>
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-sm font-semibold">
+            <span>Adjust: water, temperature, clarity, method</span>
+            <ChevronDown size={18} className="shrink-0 text-muted transition-transform group-open:rotate-180" aria-hidden />
+          </summary>
+          <div className="flex flex-col gap-3 border-t border-border p-3">
+            <Segmented<WaterKind> label="Type of water" value={type} onChange={setTypeOverride} options={TYPE_OPTIONS} />
+            <div className="flex flex-col gap-1">
+              <label htmlFor={tempId} className="text-sm font-semibold">
+                Water temp from a thermometer ({s.units === 'imperial' ? '°F' : '°C'})
+              </label>
+              <input
+                id={tempId}
+                inputMode="decimal"
+                className={inputClass}
+                value={manualTemp}
+                onChange={(e) => setManualTemp(e.target.value)}
+                placeholder={temp.c != null ? `about ${Math.round(s.units === 'imperial' ? cToF(temp.c) : temp.c)}` : ''}
+                aria-describedby={`${tempId}-hint`}
+              />
+              <p id={`${tempId}-hint`} className="text-xs text-muted">
+                Now using: {temp.source}
+                {air ? `. Rain in the last 48 h: ${air.rain48hMm} mm.` : '.'}
+              </p>
+            </div>
+            <Segmented<Clarity>
+              label={`Water clarity${clarity ? '' : ` (guess: ${clarityGuess})`}`}
+              value={clarityNow}
+              onChange={setClarity}
+              options={[
+                { value: 'clear', label: 'Clear' },
+                { value: 'stained', label: 'Stained' },
+                { value: 'muddy', label: 'Muddy' },
+              ]}
+            />
+            <Segmented<Method | 'any'>
+              label="How do you want to fish?"
+              value={method}
+              onChange={setMethod}
+              options={[
+                { value: 'any', label: 'Any' },
+                { value: 'bait', label: 'Bait' },
+                { value: 'lure', label: 'Lures' },
+                { value: 'fly', label: 'Fly' },
+              ]}
+            />
+            <p className="text-xs text-muted">{formatCoords(place)}</p>
+          </div>
+        </details>
+      )}
 
       {result?.unsupported ? <p className="rounded-md bg-surface p-3">{result.unsupported}</p> : null}
 
       {result && !result.unsupported ? (
         <section aria-label="Best bets" className="flex flex-col gap-3">
           <h2 className="text-lg font-bold">Best bets here</h2>
-          {sourcesState === 'loading' && !presence.length ? <div className="skeleton h-24" aria-label="Loading fish records" /> : null}
+          {sourcesState === 'loading' ? <div className="skeleton h-40" aria-label="Checking which fish live here" /> : null}
           {result.fromDefaults && sourcesState !== 'loading' ? (
             <p className="rounded-md bg-surface p-3 text-sm">No public fish records near here yet, so these are the fish that usually live in a {type === 'unknown' ? 'water' : type} like this.</p>
           ) : null}
-          {recs.map((r, i) => (
-            <RecCard key={r.profile.id} rec={r} open={i === 0} place={place} forecast={forecast} waterTempC={temp.c} />
-          ))}
+          {/* Wait for the records, so the list doesn't show a guess and then reshuffle. */}
+          {sourcesState === 'loading'
+            ? null
+            : recs.map((r, i) => <RecCard key={r.profile.id} rec={r} open={i === 0} place={place} forecast={forecast} waterTempC={temp.c} />)}
         </section>
       ) : null}
 

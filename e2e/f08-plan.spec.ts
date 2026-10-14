@@ -19,7 +19,7 @@ test.describe('F08 what to use at this water', () => {
     await expect(first).toContainText('Why:')
     // Not a target species, but recorded: listed separately.
     await expect(page.getByText(/Also recorded: White Sucker/)).toBeVisible()
-    await expect(page.getByText(/estimate from 2 weeks of air temperature/)).toBeVisible()
+    await expect(page.getByTestId('conditions-summary')).toContainText('(estimate)')
     await axe(page)
     await first.getByRole('link', { name: 'How to tie it' }).click()
     await expect(page.getByRole('heading', { name: 'How to set it up' })).toBeVisible()
@@ -29,8 +29,9 @@ test.describe('F08 what to use at this water', () => {
   test('F08-H2 your thermometer reading and method change the advice', async ({ page }) => {
     await mockNetwork(page)
     await page.goto(`/plan?lat=${GOLDEN.lat}&lon=${GOLDEN.lon}&type=river&name=Clear%20Creek`)
-    await page.getByLabel(/Have a thermometer/).fill('74')
-    await expect(page.getByText('your reading')).toBeVisible()
+    await page.locator('summary', { hasText: 'Adjust' }).click()
+    await page.getByLabel(/from a thermometer/).fill('74')
+    await expect(page.getByTestId('conditions-summary')).toContainText('74°F water (your reading)')
     // 74°F is too warm for trout: the warning shows and largemouth bass move up.
     await expect(page.getByRole('region', { name: 'Best bets' }).locator('details').first()).toContainText('Largemouth bass')
     await expect(page.getByText(/68°F or warmer/).first()).toBeAttached()
@@ -44,7 +45,7 @@ test.describe('F08 what to use at this water', () => {
     const counts = await mockNetwork(page)
     await page.goto(`/plan?lat=${PLACES.lake.lat}&lon=${PLACES.lake.lon}`)
     await expect(page.getByRole('heading', { level: 2, name: 'Test Lake' })).toBeVisible()
-    await expect(page.getByRole('radio', { name: 'Lake' })).toBeChecked()
+    await expect(page.getByTestId('conditions-summary')).toContainText('Lake')
     expect(counts.overpass).toBe(1)
     await expect(page.getByRole('region', { name: 'Best bets' }).locator('details').first()).toContainText(/Largemouth bass|Brown trout|Rainbow trout/)
   })
@@ -94,6 +95,19 @@ test.describe('F08 what to use at this water', () => {
     check()
   })
 
+  test('F08-H8 opening the tab finds you and answers, with nothing to fill in', async ({ page }) => {
+    const check = guard(page)
+    await mockNetwork(page)
+    await page.goto('/')
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'What to use' }).click()
+    await expect(page.getByRole('heading', { level: 2, name: 'Clear Creek' })).toBeVisible()
+    await expect(page.getByTestId('conditions-summary')).toContainText(/River · \d+°F water \(estimate\) · Clear/)
+    await expect(page.getByRole('region', { name: 'Best bets' }).locator('details').first()).toContainText('Brown trout')
+    // The controls exist but stay out of the way.
+    await expect(page.getByLabel(/from a thermometer/)).toBeHidden()
+    check()
+  })
+
   test('F08-H7 the rig guide', async ({ page }) => {
     await mockNetwork(page)
     await page.goto('/rigs')
@@ -102,5 +116,15 @@ test.describe('F08 what to use at this water', () => {
     await page.getByRole('link', { name: /Dry-dropper/ }).click()
     await expect(page.getByRole('img', { name: /Diagram of a Dry-dropper/ })).toBeVisible()
     await axe(page)
+  })
+})
+
+test.describe('F08 without location permission', () => {
+  test.use({ permissions: [] })
+  test('F08-E3 location refused: says so and offers the map', async ({ page }) => {
+    await mockNetwork(page)
+    await page.goto('/plan')
+    await expect(page.getByText(/Location is turned off for this site/)).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('button', { name: 'Pick water on the map' })).toBeVisible()
   })
 })

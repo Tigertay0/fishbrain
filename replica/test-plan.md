@@ -41,12 +41,14 @@ Every spec fails on any console error, page error or 5xx, and runs an axe WCAG 2
 | F08-H4 | | France | Hub'Eau surveys count as evidence | e2e | pass |
 | F08-H5 | | Montana | stocking events listed and counted | e2e | pass |
 | F08-H6 | | sighting → plan | map dot → sheet with observer + licence → plan led by that fish | e2e | pass |
+| F08-H8 | | open the tab | finds you, names the water, answers with nothing filled in; controls folded away | e2e | pass |
+| F08-E3 | | edge: location refused | says so, offers the map | e2e | pass |
 | F08-H7 | rig guide | | filter by method, diagram, steps | e2e | pass |
 | F08-U | engine | unit | phases through the year, southern hemisphere, warm-spell-in-fall, synonyms, injection-safe LIKE terms | unit | pass |
 | PWA-1 | offline shell | happy | after one visit, logbook and logging work with network cut; manifest valid | e2e | pass |
 | A11Y | all screens | axe | 0 violations | e2e | pass |
 
-Totals: 42 unit tests, 66 e2e runs (33 specs × 2 viewports), all passing.
+Totals: 42 unit tests, 70 e2e runs (35 specs × 2 viewports), all passing.
 
 ## Manual checks still owed
 
