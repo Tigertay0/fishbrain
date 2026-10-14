@@ -1,0 +1,611 @@
+{
+ "_about": "Themes reviews.py sorts feedback into. Patterns are Python regular expressions, matched case-insensitively against the review text. kind is complaint (something users hate) or request (something users want that is missing). Edit freely: add the app category's own words (for a booking app: double booking, time zone, no-show).",
+ "request_patterns": [
+  "\\bi wish\\b",
+  "\\bplease add\\b",
+  "\\bwould be (nice|great|good|helpful)\\b",
+  "\\bwould love\\b",
+  "\\bneeds? (a|an|the|to|more)\\b",
+  "\\bno way to\\b",
+  "\\bthere'?s no (way|option)\\b",
+  "\\b(can'?t|cannot|unable to) (even )?(add|change|edit|set|choose|export|import|customi[sz]e|connect|undo|delete|turn off)\\b",
+  "\\b(missing|lacks|lacking)\\b",
+  "\\bdoesn'?t (have|support|let|allow)\\b",
+  "\\bif only\\b",
+  "\\bfeature request\\b",
+  "\\bwhy (can'?t|isn'?t|doesn'?t)\\b",
+  "\\bwould be a (nice|great|good|helpful)\\b",
+  "\\bshould (add|have|offer|integrate|be able|show|post|unlock)\\b",
+  "\\bcould use (some )?more\\b",
+  "\\bwhy not\\b",
+  "\\bplease (fix|add|bring)\\b",
+  "\\bthere['’]?s no (way|option)\\b",
+  "\\b(can['’]?t|cannot|unable to) (even )?(add|change|edit|set|choose|export|import|customi[sz]e|connect|undo|delete|turn off)\\b",
+  "\\bdoesn['’]?t (have|support|let|allow)\\b",
+  "\\bwhy (can['’]?t|isn['’]?t|doesn['’]?t)\\b"
+ ],
+ "themes": [
+  {
+   "id": "pricing",
+   "label": "Price and paywalls",
+   "kind": "complaint",
+   "patterns": [
+    "\\bexpensive\\b",
+    "\\boverpriced\\b",
+    "\\bpric(e|es|ey|ing)\\b",
+    "\\bpaywall",
+    "\\bsubscription\\b",
+    "\\bper (month|seat|user)\\b",
+    "\\bfree (plan|tier|version)\\b",
+    "\\bupgrade to\\b",
+    "\\bpremium\\b",
+    "\\bnot worth\\b",
+    "\\bcost(s|ly)?\\b"
+   ]
+  },
+  {
+   "id": "billing",
+   "label": "Billing, cancelling and refunds",
+   "kind": "complaint",
+   "patterns": [
+    "\\bcharged\\b",
+    "\\brefund",
+    "\\bcancel(l?ing|l?ed|lation)?\\b",
+    "\\bauto.?renew",
+    "\\bhidden (fee|charge)",
+    "\\bbilling\\b",
+    "\\bscam\\b",
+    "\\bcredit card\\b"
+   ]
+  },
+  {
+   "id": "bugs",
+   "label": "Bugs and crashes",
+   "kind": "complaint",
+   "patterns": [
+    "\\bcrash(es|ed|ing)?\\b",
+    "\\bbugs?\\b",
+    "\\bbuggy\\b",
+    "\\bglitch",
+    "\\bfreez(e|es|ing)\\b",
+    "\\bbroken\\b",
+    "\\b(doesn'?t|does not|stopped) work",
+    "\\bnot working\\b",
+    "\\berror\\b",
+    "\\b(doesn['’]?t|does not|stopped) work"
+   ]
+  },
+  {
+   "id": "performance",
+   "label": "Slow, laggy, heavy",
+   "kind": "complaint",
+   "patterns": [
+    "\\bslow\\b",
+    "\\blag(gy|s)?\\b",
+    "\\bloading\\b",
+    "\\btakes forever\\b",
+    "\\bbattery\\b",
+    "\\bsluggish\\b",
+    "\\bheavy\\b"
+   ]
+  },
+  {
+   "id": "data",
+   "label": "Sync and lost data",
+   "kind": "complaint",
+   "patterns": [
+    "\\bsync(ing|s|ed)?\\b",
+    "\\blost (my|all)\\b",
+    "\\bdisappear",
+    "\\bdata loss\\b",
+    "\\bwiped\\b",
+    "\\bbackup\\b",
+    "\\bduplicat"
+   ]
+  },
+  {
+   "id": "ux",
+   "label": "Confusing or clunky to use",
+   "kind": "complaint",
+   "patterns": [
+    "\\bconfus",
+    "\\bhard to (use|find|navigate|understand)\\b",
+    "\\bcomplicated\\b",
+    "\\bcluttered\\b",
+    "\\bunintuitive\\b",
+    "\\bnot intuitive\\b",
+    "\\bclunky\\b",
+    "\\btoo many (steps|clicks|taps)\\b",
+    "\\blearning curve\\b",
+    "\\bcan'?t find\\b",
+    "\\bcan['’]?t find\\b"
+   ]
+  },
+  {
+   "id": "support",
+   "label": "Support that does not answer",
+   "kind": "complaint",
+   "patterns": [
+    "\\bcustomer (service|support)\\b",
+    "\\bsupport (team|is|was)\\b",
+    "\\bno (response|reply)\\b",
+    "\\bnever (replied|responded|heard back)\\b",
+    "\\bticket\\b",
+    "\\bchat ?bot\\b"
+   ]
+  },
+  {
+   "id": "account",
+   "label": "Login and account problems",
+   "kind": "complaint",
+   "patterns": [
+    "\\blog ?in\\b",
+    "\\bsign ?in\\b",
+    "\\bpassword\\b",
+    "\\blocked out\\b",
+    "\\bverification\\b",
+    "\\b2fa\\b",
+    "\\bdelete (my )?account\\b"
+   ]
+  },
+  {
+   "id": "notifications",
+   "label": "Notifications and spam",
+   "kind": "complaint",
+   "patterns": [
+    "\\bnotification",
+    "\\bspam",
+    "\\btoo many emails\\b",
+    "\\bpush\\b",
+    "\\breminders?\\b"
+   ]
+  },
+  {
+   "id": "ads",
+   "label": "Ads",
+   "kind": "complaint",
+   "patterns": [
+    "\\bads\\b",
+    "\\badvert",
+    "\\bad.?supported\\b",
+    "\\bpop.?ups?\\b"
+   ]
+  },
+  {
+   "id": "updates",
+   "label": "A redesign or update made it worse",
+   "kind": "complaint",
+   "patterns": [
+    "\\b(new|latest|recent) (update|version|design)\\b",
+    "\\bredesign",
+    "\\bused to be\\b",
+    "\\bbring back\\b",
+    "\\bsince the update\\b"
+   ]
+  },
+  {
+   "id": "privacy",
+   "label": "Privacy and permissions",
+   "kind": "complaint",
+   "patterns": [
+    "\\bprivacy\\b",
+    "\\btracking\\b",
+    "\\bsell(s|ing)? (my )?data\\b",
+    "\\bpermissions?\\b",
+    "\\bcreepy\\b"
+   ]
+  },
+  {
+   "id": "integrations",
+   "label": "Integrations, import and export",
+   "kind": "request",
+   "patterns": [
+    "\\bintegrat",
+    "\\bzapier\\b",
+    "\\bgoogle (calendar|sheets|drive)\\b",
+    "\\boutlook\\b",
+    "\\bslack\\b",
+    "\\bapi\\b",
+    "\\bexport\\b",
+    "\\bimport\\b",
+    "\\bcsv\\b",
+    "\\bwebhook"
+   ]
+  },
+  {
+   "id": "platforms",
+   "label": "Platforms, offline and mobile",
+   "kind": "request",
+   "patterns": [
+    "\\boffline\\b",
+    "\\bandroid\\b",
+    "\\bipad\\b",
+    "\\btablet\\b",
+    "\\bdesktop app\\b",
+    "\\bmac app\\b",
+    "\\bwindows\\b",
+    "\\bmobile (app|version)\\b",
+    "\\bweb version\\b"
+   ]
+  },
+  {
+   "id": "customisation",
+   "label": "Customisation and control",
+   "kind": "request",
+   "patterns": [
+    "\\bcustomi[sz]",
+    "\\bdark mode\\b",
+    "\\btheme\\b",
+    "\\bbranding\\b",
+    "\\bwhite.?label\\b",
+    "\\btemplates?\\b",
+    "\\bsettings?\\b",
+    "\\boption to\\b"
+   ]
+  },
+  {
+   "id": "collaboration",
+   "label": "Teams and sharing",
+   "kind": "request",
+   "patterns": [
+    "\\bteam(s|mates?)?\\b",
+    "\\bshar(e|ing)\\b",
+    "\\bcollaborat",
+    "\\bmultiple (users|accounts|people)\\b",
+    "\\broles?\\b",
+    "\\bpermissions for\\b"
+   ]
+  },
+  {
+   "id": "paywall",
+   "label": "Free tier gutted, everything behind Pro",
+   "kind": "complaint",
+   "patterns": [
+    "\\bpay ?walls?\\b",
+    "\\bpay(wall)?ed\\b",
+    "\\b(have|need|has|had) to pay\\b",
+    "\\bpay(ing)? for (everything|anything|it|so much|almost everything)\\b",
+    "\\bwithout (paying|pro|premium|a subscription|the subscription|a fee)\\b",
+    "\\bunless (you|u) (pay|upgrade)\\b",
+    "\\bpro (version|plan|upgrade|subscription|edition|users)\\b",
+    "\\b(money|cash) ?grab\\b",
+    "\\bgreed",
+    "\\bunlock\\b",
+    "\\bpro upgrade\\b",
+    "\\bfree (version|features|users|stuff|part|access)\\b",
+    "\\bbasic (plan|version|account|level)\\b",
+    "\\buseless (unless|without)\\b",
+    "\\bnothing (is )?free\\b",
+    "\\bnothings free\\b",
+    "\\b(started )?charging for everything\\b",
+    "\\bhate to pay\\b",
+    "\\bcough up\\b",
+    "\\bhave to\\s+buy\\b",
+    "\\bif you don['’]t pay\\b",
+    "\\bafter your money\\b",
+    "\\bupgrade to the nationwide\\b"
+   ]
+  },
+  {
+   "id": "trial",
+   "label": "Free trial that bills right away",
+   "kind": "complaint",
+   "patterns": [
+    "\\bfree trial\\b",
+    "\\b7.day\\b",
+    "\\btrial\\b"
+   ]
+  },
+  {
+   "id": "spots",
+   "label": "Spot burning, crowding and location privacy",
+   "kind": "complaint",
+   "patterns": [
+    "\\bspot ?(burn|nuk)",
+    "\\b(burn|burning|burned|nuke|nuking|nuked|steal|steals|stealing|stole|giv(e|es|ing) away) (my |the |our |your )?(fishing )?spots?\\b",
+    "\\bhot ?spots?\\b",
+    "\\bcrowd(ed|ing|s)?\\b",
+    "\\bcork(ing|ed)\\b",
+    "\\b(ruin|ruined|ruins|destroyed|destroys) (the )?fishing\\b",
+    "\\bprivate posts?\\b",
+    "\\blocations? (privacy|private|hidden|exposed)\\b",
+    "\\b(hide|hiding|exact) (my |the |their )?locations?\\b",
+    "\\bsafety concern\\b",
+    "\\bfind (things|it|them) yourself\\b",
+    "\\bfinding your own (water|spots)\\b",
+    "\\bfigure out your own\\b",
+    "\\b(put|did|do) (in )?the work\\b"
+   ]
+  },
+  {
+   "id": "map",
+   "label": "Map display, layers and readability",
+   "kind": "complaint",
+   "patterns": [
+    "(?<!google )(?<!onx )(?<!apple )\\bmaps?\\b(?! app)",
+    "\\blayers?\\b",
+    "\\bsatellite\\b",
+    "\\bzoom",
+    "\\bicons?\\b",
+    "\\bfont\\b",
+    "\\bdepth (chart|lines|map)",
+    "\\bupside down\\b",
+    "\\b(map )?key\\b",
+    "\\bscreen margins\\b",
+    "\\bcut off\\b",
+    "\\btoo (small|wide)\\b",
+    "\\bpop-?up of stream names\\b"
+   ]
+  },
+  {
+   "id": "regs",
+   "label": "Regulations, stocking and seasons in the app",
+   "kind": "request",
+   "patterns": [
+    "\\bregulations?\\b",
+    "\\bregs\\b",
+    "\\bstock(ing|ed)\\b",
+    "\\blimits\\b",
+    "\\bseasons?\\b",
+    "\\bcatch and release\\b",
+    "\\bspecial reg",
+    "\\bfishing licen[cs]e\\b"
+   ]
+  },
+  {
+   "id": "accuracy",
+   "label": "Wrong or out-of-date water, access and catch data",
+   "kind": "complaint",
+   "patterns": [
+    "\\binaccura",
+    "\\bnot (very |that )?accurate\\b",
+    "(?<!get me )(?<!get my )(?<!go )\\bwrong\\b",
+    "\\bincorrect\\b",
+    "\\bnot correct\\b",
+    "\\bout of date\\b",
+    "\\boutdated\\b",
+    "\\bincomplete\\b",
+    "\\bprivate (property|land)\\b",
+    "\\btrespass",
+    "\\bnot legally\\b",
+    "\\blegally fish",
+    "\\bdr(y|ied) (up|creek)\\b",
+    "\\bbone dry\\b",
+    "\\bno fish in it\\b",
+    "\\bmuddy\\b",
+    "\\bweed infested\\b",
+    "\\bno idea where the (trout|fish) are\\b",
+    "\\bhighlights? every (river|stream)\\b",
+    "\\bfake (posts?|catches|accounts)\\b",
+    "\\byears old\\b",
+    "\\bpuddle\\b",
+    "\\b(weren['’]?t|wasn['’]?t|not) (even )?shown\\b",
+    "\\bvery little spots\\b",
+    "\\bstream data is limited\\b",
+    "\\bclassification\\b",
+    "\\bwhere the picture was taken\\b"
+   ]
+  },
+  {
+   "id": "coverage",
+   "label": "Missing states and thin regional data",
+   "kind": "request",
+   "patterns": [
+    "\\b(no|needs|except|missing|without) (florida|louisiana|alaska|hawaii|my state)\\b",
+    "\\b(florida|louisiana|alaska|my state) (wasn['’]?t|isn['’]?t|is not|was not|want)\\b",
+    "\\bmissing (a |two )?states?\\b",
+    "\\b(can['’]?t|cannot) find my state\\b",
+    "\\bdon['’]?t (they )?(have|got) (florida|louisiana)\\b",
+    "\\bdoesn['’]?t work in (ak|alaska)\\b",
+    "\\b(almost )?no (info|information) for\\b",
+    "\\b(info|information) (was|is) lacking\\b",
+    "\\bdo not have any states\\b",
+    "\\buneven nationwide\\b"
+   ]
+  },
+  {
+   "id": "forecast",
+   "label": "Bite times and forecasts",
+   "kind": "complaint",
+   "patterns": [
+    "\\bbite ?(time|guide)s?\\b",
+    "\\bforecasts?\\b",
+    "\\bsolunar\\b",
+    "\\bbest times?\\b",
+    "\\bwhen (the )?fish are biting\\b",
+    "\\bweather\\b",
+    "\\bwhat time\\b",
+    "\\bmoon phase"
+   ]
+  },
+  {
+   "id": "gauge",
+   "label": "Stream flows and gauges",
+   "kind": "request",
+   "patterns": [
+    "(?<!12 )\\bgau?ges?\\b",
+    "\\bflows?\\b",
+    "\\bcfs\\b",
+    "\\busgs\\b",
+    "\\bwater (levels?|temp)",
+    "\\bhatch(es|ing)?\\b"
+   ]
+  },
+  {
+   "id": "offline",
+   "label": "Offline maps and no-signal use",
+   "kind": "request",
+   "patterns": [
+    "\\boffline\\b",
+    "\\bno (signal|service|cell|cellular|reception)\\b",
+    "\\bwithout (a |any )?(signal|service|cell|network|reception)\\b",
+    "\\bwithout (excellent )?wi-?fi\\b",
+    "\\bnetwork access\\b",
+    "\\bcell(ular)? (service|coverage|data)\\b",
+    "\\btiles?\\b",
+    "\\bdownload(ed)? (more )?maps\\b",
+    "\\bdata connection\\b",
+    "\\bwilderness\\b"
+   ]
+  },
+  {
+   "id": "wontopen",
+   "label": "Won't open, won't load, locks up",
+   "kind": "complaint",
+   "patterns": [
+    "\\bwon['’]?t (even )?(open|load)\\b",
+    "\\bnever (opens|loads)\\b",
+    "\\b(locked|locks|lock) up\\b",
+    "\\bblue screen\\b",
+    "\\b(gets|got) stuck\\b",
+    "\\bfails to open\\b",
+    "\\bstopped working\\b",
+    "\\binaccessible\\b",
+    "\\bbarely loads\\b",
+    "\\bhasn['’]?t loaded\\b",
+    "\\bwouldn['’]?t (open|load)\\b"
+   ]
+  },
+  {
+   "id": "entitlement",
+   "label": "Paid but still locked out (purchase not recognised)",
+   "kind": "complaint",
+   "patterns": [
+    "\\b(re-?buy|re-?purchase)",
+    "\\bbuy it again\\b",
+    "\\bupgrade,? again\\b",
+    "\\b(still|now) (get|have|had|has) the basic\\b",
+    "\\b(have|had) the basic\\b",
+    "\\bupgrade from the basic\\b",
+    "\\b(won['’]?t|wouldn['’]?t|didn['’]?t) accept (my )?(purchase|payment)\\b",
+    "\\bnot the state I selected\\b",
+    "\\bcan['’]?t get access to the features\\b",
+    "\\bemail not recognized\\b",
+    "\\bdelete my account when\\b",
+    "\\blocked my (basic )?account\\b"
+   ]
+  },
+  {
+   "id": "species",
+   "label": "Species data and filters",
+   "kind": "request",
+   "patterns": [
+    "\\bspecies\\b",
+    "\\bbluegill\\b",
+    "\\brainbow trout\\b",
+    "\\blargemouth\\b",
+    "\\bfreshwater\\b",
+    "\\bsaltwater\\b",
+    "\\bfish (not even )?around here\\b",
+    "\\bunlock more fish"
+   ]
+  },
+  {
+   "id": "freealts",
+   "label": "Same info is free elsewhere (Google, state sites, rival apps)",
+   "kind": "complaint",
+   "patterns": [
+    "\\bgoogle\\b",
+    "\\bfor free\\b",
+    "\\banywhere free\\b",
+    "\\bonline for free\\b",
+    "\\bstate (fish and game|website|maps?|and google)\\b",
+    "\\bdelorme\\b",
+    "\\bonwater\\b",
+    "\\bfish ?angler\\b",
+    "\\bfishbrain is better\\b",
+    "\\bgarmin\\b",
+    "\\bfish ai\\b",
+    "\\busgs website\\b",
+    "\\bother (apps|providers|sources|.stream. apps)\\b",
+    "\\bforum\\b",
+    "\\blocal fishing stores\\b",
+    "\\byoutube\\b"
+   ]
+  },
+  {
+   "id": "value",
+   "label": "Not worth it: thin or useless content",
+   "kind": "complaint",
+   "patterns": [
+    "\\bwaste of (money|time|space)\\b",
+    "\\bzero content\\b",
+    "\\b(doesn['’]t|does not) provide any\\b",
+    "\\bno (useful|good|real) info",
+    "\\buseless\\b",
+    "\\bnothing useful\\b",
+    "\\bdoesn['’]t tell you\\b",
+    "\\bnot really any good\\b",
+    "\\bnothing (here|out of)\\b",
+    "\\bpointless\\b"
+   ]
+  },
+  {
+   "id": "onboarding",
+   "label": "Can't sign up or finish setup",
+   "kind": "complaint",
+   "patterns": [
+    "\\b(can['’]t|cannot|unable to) (even )?(sign up|create an account|choose (a |the )?state)\\b",
+    "\\bcreate an account via\\b",
+    "\\bwon['’]t let (you|me) (choose|pick) (a |the )?state\\b",
+    "\\b(setting up|choose|pick) (your |a |the )?(preferred )?state\\b",
+    "\\berror code\\b"
+   ]
+  },
+  {
+   "id": "nags",
+   "label": "Upsell and review nags",
+   "kind": "complaint",
+   "patterns": [
+    "\\basking for reviews\\b",
+    "\\basked to do a review\\b",
+    "\\bmillion pop-?ups\\b",
+    "\\basked (me )?to upgrade\\b",
+    "\\bbuy the subscription\\b",
+    "\\bpops up 24\\b",
+    "\\btry our subscription\\b",
+    "\\bconstant pop-?up\\b"
+   ]
+  },
+  {
+   "id": "logging",
+   "label": "Catch logging and personal journal",
+   "kind": "request",
+   "patterns": [
+    "\\blog(ging)? (a |my |your |the )?(catch|catches|fish)\\b",
+    "\\bcatch log\\b",
+    "\\bjournal\\b",
+    "\\blogged\\b",
+    "\\bposting logs\\b",
+    "\\bpersonal best\\b",
+    "\\bPBs?\\b",
+    "\\bweight and length\\b",
+    "\\btrack (your|my) catches\\b",
+    "\\bprivate posts?\\b",
+    "\\bsaved? (streams|spots)\\b",
+    "\\bmy content\\b",
+    "\\bwidgets?\\b"
+   ]
+  },
+  {
+   "id": "social",
+   "label": "Social feed, community and moderation",
+   "kind": "complaint",
+   "patterns": [
+    "\\bfeed\\b(?! you)",
+    "\\bfollow(ers?|ing)?\\b",
+    "\\bcomments?\\b",
+    "\\bsocial (media|feature)\\b",
+    "\\bcommunity\\b",
+    "\\bfake accounts\\b",
+    "\\bkids?\\b",
+    "\\bmoderat",
+    "\\bposts\\b",
+    "\\bangler input\\b",
+    "\\bcheck-ins\\b",
+    "\\bcontributions?\\b"
+   ]
+  }
+ ],
+ "_about_fishing": "Fishing-specific themes added for the Fishbrain + TroutRoutes replica. Existing themes and patterns are kept; new themes are appended, and each existing pattern with a straight apostrophe gets a sibling that also accepts the curly apostrophe (U+2019) the App Store feed uses."
+}

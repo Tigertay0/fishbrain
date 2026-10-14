@@ -1,0 +1,57 @@
+feature,area,priority,original,clone,notes
+Interactive map centered on my location,map,must,yes,yes,geolocate control + last view remembered
+Stream and river lines on the map,map,must,yes,yes,"TroutRoutes; from OSM waterways not their classified set; basemap OpenMapTiles waterway layer, restyled; not rendered against live tiles in CI (network sandbox)"
+Tap a stream for its details,map,must,yes,yes,S03; hit layer on waterway; same live-tile caveat
+USGS gauge layer with live flow,gauges,must,yes,yes,"TroutRoutes; OGC API v1 latest-continuous, 1° cells, 20 min cache"
+Water temperature on gauges that report it,gauges,must,yes,yes,TroutRoutes shows gauge data; temp verdict is ours; colour-coded trout bands
+Gauge history chart,gauges,must,yes,yes,"TroutRoutes interactive charts; 7-day flow + temp sparklines, 24 h trend"
+Place search,map,must,yes,yes,Nominatim on submit
+7-day weather forecast,forecast,must,yes,yes,Fishbrain; Open-Meteo
+Best times to fish (bite windows),forecast,must,yes,yes,Fishbrain BiteTime; ours is a documented heuristic; heuristic with per-hour reasons shown
+Sunrise sunset and moon phase,forecast,must,yes,yes,"suncalc, in place-local time"
+Log a catch with species size and bait,logbook,must,yes,yes,Fishbrain
+Catch photo,logbook,must,yes,yes,"resized to 1600px + thumb, stored as blobs"
+Conditions saved with each catch automatically,logbook,must,yes,yes,"Fishbrain logbook fetches weather; weather, pressure, moon, nearest gauge; backfilled after offline saves"
+Location privacy per catch (exact / water / hidden),logbook,must,yes,yes,Fishbrain FAQ: three levels; hidden stores no coordinates
+Logbook list of my catches,logbook,must,yes,yes,
+Custom map markers with notes,markers,must,yes,yes,"TroutRoutes markups; 6 types; long-press, right-click or centre button"
+Works offline after first load,offline,must,yes,yes,both apps; PWA service worker; service worker; e2e verified with network cut
+Download a map area for offline use,offline,should,yes,partial,"TroutRoutes offline maps; built (2,500-tile areas, version-free tile cache keys) but not run against live OpenFreeMap tiles yet"
+Layer toggles,map,should,yes,yes,
+Satellite basemap,map,should,yes,yes,USGS National Map imagery + topo
+Catch pins on the map,map,should,yes,yes,
+Filter logbook by species,logbook,should,yes,yes,Fishbrain species filter
+Edit and delete a catch,logbook,should,yes,yes,
+Catch stats and personal bests,stats,should,yes,yes,"Fishbrain logbook insights; longest, heaviest, by species/hour/fly/water-temp band"
+Pressure trend in forecast,forecast,should,yes,yes,sea-level pressure
+Stream notes and my own classification,streams,should,yes,yes,replaces TroutRoutes classes with the angler's own labels
+Regulations link per stream,streams,should,yes,yes,user-entered link; TroutRoutes curated regs are skipped; with date checked
+Fly shops and access amenities near streams,map,should,yes,yes,"from OSM: fishing shops parking slipways campsites; Overpass, on demand, marked unverified"
+Directions to a point,map,should,yes,yes,hands off to the device maps app; hands off to Apple/Google Maps
+Units: imperial or metric,settings,should,yes,yes,
+Species guide,species,could,yes,yes,"Fishbrain species pages; 12 species, written fresh"
+Lure or fly suggestions for conditions,forecast,could,yes,no,Fishbrain lure recs; ours would be a simple rule table; not built
+Export my data,settings,could,yes,yes,"JSON with photos, CSV"
+Import my data,settings,could,no,yes,"our addition; newer-wins merge, validates privacy"
+Install as an app (PWA),platform,could,yes,yes,both apps are native installs; manifest + maskable icon; install prompt
+Dark mode,platform,could,yes,yes,"tokens.dark.json, 0 AA failures"
+Optional own USGS API key for higher limits,settings,could,no,yes,our addition
+Elevation profile of a stream,streams,could,yes,skip,needs a DEM service; later
+Social feed followers and comments,social,could,yes,skip,their network
+Crowd-sourced catch locations from other anglers,map,must,yes,skip,their users' data
+Classified trout streams (national classes),streams,must,yes,skip,TroutRoutes curated dataset
+Hand-curated public access points,map,must,yes,skip,TroutRoutes curated dataset; OSM amenities used instead
+Regulations overlay,streams,should,yes,skip,curated / partner data; user regs links instead
+Public land boundaries,map,should,yes,skip,public PAD-US data but needs hosted tiles; later milestone
+Garmin depth maps,map,could,yes,skip,licensed
+AI spot prediction,map,could,yes,skip,trained on their catch data
+Species recognition from a photo,logbook,could,yes,skip,needs a model; later
+Pro subscription and paywall,billing,should,yes,skip,v1 is free and local; pricing is replica-launch's call
+F1 Public data never paywalled (stream names gauges weather offline),product,must,no,yes,fixes.md F1
+F2 Private by default; hidden catches store no coordinates,logbook,must,no,yes,fixes.md F2
+F3 Nationwide coverage incl. FL LA AK,data,must,no,yes,fixes.md F3
+F4 Offline areas up to 2500 tiles each,offline,should,no,partial,fixes.md F4; same caveat as offline download
+F5 Unverified-access warning on OSM amenities and bridges,map,should,no,yes,fixes.md F5
+F6 Streams drawn in a water colour distinct from roads,map,should,no,yes,fixes.md F6
+F7 Per-stream regs link with date checked,streams,should,no,yes,fixes.md F7
+F8 No review prompts or nags,product,could,no,yes,fixes.md F8

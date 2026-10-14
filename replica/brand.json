@@ -1,0 +1,5 @@
+{
+  "avoid": ["Fishbrain", "Fish Brain", "TroutRoutes", "Trout Routes", "onX", "onXmaps", "Fish Rules", "BiteTime", "BiteGuide", "BiteScore", "Seamline"],
+  "domains": ["fishbrain.com", "troutroutes.com", "onxmaps.com"],
+  "colors": []
+}

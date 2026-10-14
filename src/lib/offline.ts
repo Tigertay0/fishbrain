@@ -1,0 +1,73 @@
+// "Save this area": prefetches basemap vector tiles so the service worker has
+// them for a trip with no signal. Capped so it stays polite to the free tile host.
+import { countTiles, tilesForBBox, type BBox } from './geo'
+
+export const MAX_AREA_TILES = 2500
+/** The basemap's vector tiles stop at 14; MapLibre overzooms past that. */
+const MAX_TILE_ZOOM = 14
+
+export type AreaPlan = { zooms: number[]; tiles: number } | { tooBig: true; tiles: number }
+
+/** Below this the saved map can't show small streams and trails, so it isn't worth saving. */
+const MIN_USEFUL_ZOOM = 12
+
+/** Every zoom from a regional overview down to street level, dropping the deepest zooms until it fits. */
+export function planArea(b: BBox, viewZoom: number): AreaPlan {
+  const lo = Math.max(5, Math.floor(viewZoom) - 4)
+  let hi = MAX_TILE_ZOOM
+  const range = (a: number, z: number) => Array.from({ length: z - a + 1 }, (_, i) => a + i)
+  while (hi >= Math.max(lo, Math.floor(viewZoom), MIN_USEFUL_ZOOM)) {
+    const zooms = range(lo, hi)
+    const tiles = countTiles(b, zooms)
+    if (tiles <= MAX_AREA_TILES) return { zooms, tiles }
+    hi--
+  }
+  return { tooBig: true, tiles: countTiles(b, range(lo, Math.max(lo, Math.floor(viewZoom)))) }
+}
+
+export type Progress = { done: number; failed: number; total: number }
+
+export async function downloadTiles(
+  template: string,
+  b: BBox,
+  zooms: number[],
+  onProgress: (p: Progress) => void,
+  signal: AbortSignal,
+): Promise<Progress> {
+  const tiles = tilesForBBox(b, zooms)
+  const p: Progress = { done: 0, failed: 0, total: tiles.length }
+  let next = 0
+  const worker = async () => {
+    while (next < tiles.length && !signal.aborted) {
+      const t = tiles[next++]
+      const url = template.replace('{z}', String(t.z)).replace('{x}', String(t.x)).replace('{y}', String(t.y))
+      try {
+        const res = await fetch(url, { signal })
+        if (!res.ok) p.failed++
+        else await res.arrayBuffer() // let the service worker finish caching it
+      } catch {
+        if (!signal.aborted) p.failed++
+      }
+      p.done++
+      onProgress({ ...p })
+    }
+  }
+  await Promise.all(Array.from({ length: 6 }, worker))
+  return p
+}
+
+export async function storageEstimate(): Promise<{ usage: number; quota: number } | undefined> {
+  try {
+    const e = await navigator.storage?.estimate?.()
+    return e?.usage != null && e.quota != null ? { usage: e.usage, quota: e.quota } : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 ** 2) return `${(n / 1024).toFixed(0)} KB`
+  if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`
+  return `${(n / 1024 ** 3).toFixed(1)} GB`
+}

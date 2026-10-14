@@ -1,0 +1,49 @@
+{
+  "name": "tailout",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "icons": "node scripts/make-icons.mjs"
+  },
+  "dependencies": {
+    "dexie": "4.4.6",
+    "dexie-react-hooks": "4.4.0",
+    "lucide-react": "1.57.0",
+    "maplibre-gl": "5.24.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-router-dom": "7.18.4",
+    "suncalc": "1.9.0",
+    "workbox-cacheable-response": "7.4.1",
+    "workbox-core": "7.4.1",
+    "workbox-expiration": "7.4.1",
+    "workbox-precaching": "7.4.1",
+    "workbox-routing": "7.4.1",
+    "workbox-strategies": "7.4.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.56.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "22.18.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/suncalc": "1.9.2",
+    "@vitejs/plugin-react": "5.2.0",
+    "fake-indexeddb": "6.2.5",
+    "jsdom": "30.1.2",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vite": "7.3.7",
+    "vite-plugin-pwa": "1.3.0",
+    "vitest": "3.2.7",
+    "workbox-window": "7.4.1"
+  }
+}

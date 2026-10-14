@@ -1,0 +1,195 @@
+{
+  "_about": "Tailout dark theme. Same roles as tokens.json. Check with: python3 contrast.py tokens.dark.json",
+  "color": {
+    "bg": "#13120f",
+    "surface": "#1d1b17",
+    "raised": "#262420",
+    "border": "#3a362e",
+    "border-input": "#8e8572",
+    "text": "#f3efe6",
+    "text-muted": "#b8af9e",
+    "accent": "#e58a57",
+    "accent-strong": "#f0a477",
+    "on-accent": "#1a0d05",
+    "water": "#6cc3e0",
+    "danger": "#ff8a7a",
+    "success": "#7cc97f",
+    "warning": "#f2b44f",
+    "cold": "#8db8f0",
+    "focus": "#e58a57"
+  },
+  "pairs": [
+    [
+      "text",
+      "bg"
+    ],
+    [
+      "text",
+      "surface"
+    ],
+    [
+      "text",
+      "raised"
+    ],
+    [
+      "text-muted",
+      "bg"
+    ],
+    [
+      "text-muted",
+      "surface"
+    ],
+    [
+      "text-muted",
+      "raised"
+    ],
+    [
+      "on-accent",
+      "accent"
+    ],
+    [
+      "on-accent",
+      "accent-strong"
+    ],
+    [
+      "accent",
+      "bg"
+    ],
+    [
+      "accent",
+      "raised"
+    ],
+    [
+      "accent",
+      "surface"
+    ],
+    [
+      "water",
+      "bg"
+    ],
+    [
+      "water",
+      "raised"
+    ],
+    [
+      "danger",
+      "bg"
+    ],
+    [
+      "danger",
+      "raised"
+    ],
+    [
+      "success",
+      "bg"
+    ],
+    [
+      "success",
+      "raised"
+    ],
+    [
+      "warning",
+      "bg"
+    ],
+    [
+      "warning",
+      "raised"
+    ],
+    [
+      "cold",
+      "bg"
+    ],
+    [
+      "cold",
+      "raised"
+    ],
+    [
+      "border-input",
+      "bg",
+      "ui"
+    ],
+    [
+      "border-input",
+      "raised",
+      "ui"
+    ],
+    [
+      "focus",
+      "bg",
+      "ui"
+    ],
+    [
+      "focus",
+      "surface",
+      "ui"
+    ]
+  ],
+  "font": {
+    "sans": "system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", sans-serif",
+    "mono": "ui-monospace, SFMono-Regular, Menlo, monospace"
+  },
+  "type": {
+    "xs": {
+      "size": 12,
+      "line": 16,
+      "weight": 500
+    },
+    "sm": {
+      "size": 14,
+      "line": 20,
+      "weight": 400
+    },
+    "base": {
+      "size": 16,
+      "line": 24,
+      "weight": 400
+    },
+    "lg": {
+      "size": 20,
+      "line": 28,
+      "weight": 600
+    },
+    "xl": {
+      "size": 28,
+      "line": 34,
+      "weight": 700
+    },
+    "display": {
+      "size": 40,
+      "line": 44,
+      "weight": 700
+    }
+  },
+  "space": [
+    0,
+    4,
+    8,
+    12,
+    16,
+    24,
+    32,
+    48,
+    64
+  ],
+  "radius": {
+    "sm": 6,
+    "md": 10,
+    "lg": 16,
+    "pill": 999
+  },
+  "shadow": {
+    "card": "0 1px 2px rgba(28,26,22,.06), 0 1px 3px rgba(28,26,22,.10)",
+    "pop": "0 12px 32px rgba(28,26,22,.18)"
+  },
+  "motion": {
+    "fast": "120ms",
+    "base": "200ms",
+    "ease": "cubic-bezier(.2,.8,.2,1)"
+  },
+  "layout": {
+    "tabbar": 64,
+    "header": 56,
+    "maxContent": 720,
+    "touchTarget": 44
+  }
+}

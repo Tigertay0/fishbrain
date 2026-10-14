@@ -1,0 +1,89 @@
+@import 'tailwindcss';
+@import './styles/tokens.css';
+@import 'maplibre-gl/dist/maplibre-gl.css';
+
+@theme inline {
+  --color-bg: var(--tl-bg);
+  --color-surface: var(--tl-surface);
+  --color-raised: var(--tl-raised);
+  --color-border: var(--tl-border);
+  --color-border-input: var(--tl-border-input);
+  --color-text: var(--tl-text);
+  --color-muted: var(--tl-text-muted);
+  --color-accent: var(--tl-accent);
+  --color-accent-strong: var(--tl-accent-strong);
+  --color-on-accent: var(--tl-on-accent);
+  --color-water: var(--tl-water);
+  --color-danger: var(--tl-danger);
+  --color-success: var(--tl-success);
+  --color-warning: var(--tl-warning);
+  --color-cold: var(--tl-cold);
+  --color-focus: var(--tl-focus);
+  --radius-sm: var(--tl-radius-sm);
+  --radius-md: var(--tl-radius-md);
+  --radius-lg: var(--tl-radius-lg);
+  --shadow-card: var(--tl-shadow-card);
+  --shadow-pop: var(--tl-shadow-pop);
+  --font-sans: var(--tl-font-sans);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    background: var(--tl-bg);
+    color: var(--tl-text);
+    font-family: var(--tl-font-sans);
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--tl-focus);
+    outline-offset: 2px;
+  }
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* stops iOS zooming on focus */
+  }
+}
+
+.pb-tabbar {
+  padding-bottom: calc(var(--tl-tabbar) + 28px + env(safe-area-inset-bottom));
+}
+.bottom-tabbar {
+  bottom: calc(var(--tl-tabbar) + env(safe-area-inset-bottom));
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.maplibregl-ctrl-group {
+  background: var(--tl-raised);
+  box-shadow: var(--tl-shadow-pop) !important;
+  border-radius: var(--tl-radius-md);
+}
+.maplibregl-ctrl-group button {
+  width: 44px;
+  height: 44px;
+}
+.maplibregl-ctrl-attrib {
+  font-size: 11px;
+}
+
+@keyframes tl-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.skeleton {
+  background: var(--tl-surface);
+  border-radius: var(--tl-radius-sm);
+  animation: tl-pulse 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+  * { scroll-behavior: auto !important; transition: none !important; }
+}
