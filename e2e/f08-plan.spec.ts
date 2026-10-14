@@ -25,7 +25,8 @@ test.describe('F08 what to use at this water', () => {
     expect(await pack.getByRole('listitem').count()).toBeGreaterThan(10)
     // Not a target species, but recorded: listed separately.
     await expect(page.getByText(/Also recorded: White Sucker/)).toBeVisible()
-    await expect(page.getByTestId('conditions-summary')).toContainText('(estimate)')
+    // A gauge reading when the map has already loaded nearby gauges, otherwise an estimate.
+    await expect(page.getByTestId('conditions-summary')).toContainText(/\((estimate|gauge)\)/)
     await axe(page)
     await first.getByRole('link', { name: 'How to tie it' }).click()
     await expect(page.getByRole('heading', { name: 'How to set it up' })).toBeVisible()
@@ -108,7 +109,7 @@ test.describe('F08 what to use at this water', () => {
     await page.goto('/')
     await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'What to use' }).click()
     await expect(page.getByRole('heading', { level: 2, name: 'Clear Creek' })).toBeVisible()
-    await expect(page.getByTestId('conditions-summary')).toContainText(/River · \d+°F water \(estimate\) · Clear/)
+    await expect(page.getByTestId('conditions-summary')).toContainText(/River · \d+°F water \((estimate|gauge)\) · Clear/)
     await expect(page.getByRole('region', { name: 'Best bets' }).locator('details').first()).toContainText('Brown trout')
     // The controls exist but stay out of the way.
     await expect(page.getByLabel(/from a thermometer/)).toBeHidden()

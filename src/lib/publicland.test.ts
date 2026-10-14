@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { tileUrls } from './offline'
-import { combineLand, parseFee, formatAcres, LAND_TILES, LAND_FILTER, landColorExpression, landQueryUrl, managerForSymbol, MANAGER_BY_SYMBOL, parseLand, SHOWN_MANAGERS } from './publicland'
+import { combineLand, lookupLand, parseFee, formatAcres, LAND_TILES, LAND_FILTER, landColorExpression, landQueryUrl, managerForSymbol, MANAGER_BY_SYMBOL, parseLand, SHOWN_MANAGERS } from './publicland'
 
 describe('public land', () => {
   it('maps the tile service symbols to who manages the land', () => {
@@ -82,5 +82,45 @@ describe('ownership beats overlapping designations', () => {
     expect(main.manager).toBe('State Department of Natural Resources')
     expect(main.designation).toBe('State Resource Management Area')
     expect(combineLand(fee, access)).toHaveLength(1) // same parcel, not listed twice
+  })
+})
+
+describe('land lookup safety', () => {
+  it('never borrows the manager of a different parcel, and the smallest owner wins', () => {
+    const fee = parseFee({
+      features: [
+        { attributes: { Unit_Nm: 'Big Federal Area', Pub_Access: 'OA', Mang_Type: 'FED', Mang_Name: 'BLM', GIS_Acres: 500000 } },
+        { attributes: { Unit_Nm: 'Small State Park', Pub_Access: 'RA', Mang_Type: 'STAT', Mang_Name: 'ZZZ', GIS_Acres: 300 } },
+      ],
+    })
+    const access = parseLand({ features: [{ attributes: { Unit_Nm: 'Some Wilderness', Pub_Access: 'RA', FeatClass: 'Designation', MngNm_Desc: 'Bureau of Land Management', MngTp_Desc: 'Federal' } }] })
+    const [main, ...rest] = combineLand(fee, access)
+    expect(main).toMatchObject({ name: 'Small State Park', access: 'restricted', managerType: 'State', manager: undefined })
+    expect(rest.map((p) => p.name)).toEqual(['Big Federal Area', 'Some Wilderness'])
+  })
+  it('caches only complete answers: a timed-out half is shown, then asked again next time', async () => {
+    const calls: string[] = []
+    let feeFails = true
+    vi.stubGlobal('fetch', async (url: string) => {
+      calls.push(url)
+      if (url.includes('Fee_Managers') && feeFails) throw new TypeError('network')
+      const body = url.includes('Fee_Managers')
+        ? { features: [{ attributes: { Unit_Nm: 'Gallatin National Forest', Pub_Access: 'OA', Mang_Name: 'USFS', GIS_Acres: 1 } }] }
+        : { features: [{ attributes: { Unit_Nm: 'Hyalite WSA', Pub_Access: 'RA', FeatClass: 'Designation' } }] }
+      return new Response(JSON.stringify(body), { status: 200 })
+    })
+    try {
+      const first = await lookupLand(45.1, -111.1)
+      expect(first.complete).toBe(false)
+      expect(first.parcels[0].name).toBe('Hyalite WSA')
+      feeFails = false
+      const second = await lookupLand(45.1, -111.1)
+      expect(second).toMatchObject({ complete: true, parcels: [{ name: 'Gallatin National Forest', access: 'open' }, { name: 'Hyalite WSA' }] })
+      const n = calls.length
+      expect((await lookupLand(45.1, -111.1)).complete).toBe(true)
+      expect(calls.length).toBe(n) // the complete answer came from the cache
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

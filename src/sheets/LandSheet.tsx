@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CircleCheck, CircleQuestionMark, CircleX, MapPinPlus, ShieldAlert, Sparkles, TriangleAlert } from 'lucide-react'
 import { Button, Sheet } from '../components/ui'
-import { ACCESS_TEXT, formatAcres, lookupLand, MANAGER_LABEL, type Access, type LandParcel, type ManagerKind } from '../lib/publicland'
+import { ACCESS_TEXT, formatAcres, lookupLand, MANAGER_LABEL, type Access, type LandLookup, type ManagerKind } from '../lib/publicland'
 import type { LngLat } from '../lib/geo'
 
 export type LandHit = LngLat & { manager: ManagerKind }
@@ -14,6 +14,9 @@ const ACCESS_ICON: Record<Access, { icon: typeof CircleCheck; tone: string }> = 
   unknown: { icon: CircleQuestionMark, tone: 'text-muted' },
 }
 
+const EASEMENT_NOTE =
+  'This is a conservation easement: usually private land the owner has agreed not to develop. You can only go in where the access above, or signs on the ground, say so.'
+
 const MANAGER_NOTE: Partial<Record<ManagerKind, string>> = {
   tribal: 'Tribal land: fishing usually needs a tribal permit, separate from your state licence. Check with the tribe first.',
   ngo: 'Land trusts and conservation groups set their own rules. Many welcome anglers; some only on marked trails or by permission.',
@@ -21,8 +24,9 @@ const MANAGER_NOTE: Partial<Record<ManagerKind, string>> = {
 
 export function LandSheet({ hit, onClose, onAddMarker }: { hit: LandHit; onClose: () => void; onAddMarker: (p: LngLat, name?: string) => void }) {
   const nav = useNavigate()
-  const [parcels, setParcels] = useState<LandParcel[]>()
+  const [result, setResult] = useState<LandLookup>()
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading')
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let live = true
@@ -30,17 +34,17 @@ export function LandSheet({ hit, onClose, onAddMarker }: { hit: LandHit; onClose
     lookupLand(hit.lat, hit.lon)
       .then((r) => {
         if (!live) return
-        setParcels(r.data)
+        setResult(r)
         setState('ok')
       })
       .catch(() => live && setState('error'))
     return () => {
       live = false
     }
-  }, [hit.lat, hit.lon])
+  }, [hit.lat, hit.lon, attempt])
 
-  const [main, ...others] = parcels ?? []
-  const note = MANAGER_NOTE[hit.manager]
+  const [main, ...others] = result?.parcels ?? []
+  const note = main?.featureClass === 'Easement' ? EASEMENT_NOTE : MANAGER_NOTE[hit.manager]
 
   return (
     <Sheet
@@ -64,15 +68,28 @@ export function LandSheet({ hit, onClose, onAddMarker }: { hit: LandHit; onClose
     >
       <div className="flex flex-col gap-3 text-sm">
         {state === 'loading' ? <div className="skeleton h-16" role="status" aria-label="Looking up this land" /> : null}
-        {state === 'error' ? (
-          <p className="rounded-md bg-surface p-3">
-            Couldn’t look up the details (offline?). The shading says this is {MANAGER_LABEL[hit.manager].toLowerCase()}; access isn’t known until you’re back
-            online.
-          </p>
-        ) : null}
-        {state === 'ok' && !main ? (
-          <p className="rounded-md bg-surface p-3">No public land record right at this spot: you may be just outside a boundary. Treat it as private unless signs say otherwise.</p>
-        ) : null}
+        <div aria-live="polite" className="flex flex-col gap-3">
+          {state === 'error' ? (
+            <div className="flex flex-col items-start gap-2 rounded-md bg-surface p-3">
+              <p>
+                Couldn’t look up the details (offline?). The shading says this is {MANAGER_LABEL[hit.manager].toLowerCase()}; whether you can get in isn’t known
+                until the lookup works.
+              </p>
+              <Button size="sm" onClick={() => setAttempt((n) => n + 1)}>
+                Try again
+              </Button>
+            </div>
+          ) : null}
+          {state === 'ok' && !main ? (
+            <p className="rounded-md bg-surface p-3">
+              The map shades this spot, but the land records have nothing right here: you may be on a boundary or a private parcel inside it. Treat it as private
+              unless signs say otherwise.
+            </p>
+          ) : null}
+          {state === 'ok' && result && !result.complete ? (
+            <p className="text-xs text-muted">Part of the lookup failed (weak signal?), so this may be incomplete. Tap the land again to retry.</p>
+          ) : null}
+        </div>
         {main ? <AccessBadge access={main.access} /> : null}
         {main ? (
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">

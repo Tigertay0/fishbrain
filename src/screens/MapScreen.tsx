@@ -98,9 +98,12 @@ export function MapScreen({ active }: { active: boolean }) {
         autoLocating = false
         void updateSettings({ lastFix: { lat: e.coords.latitude, lon: e.coords.longitude, at: Date.now() } })
       })
-      geo.on('error', () => {
-        autoLocating = false
-      })
+      // Errors, or the angler tapping the locate button themselves, end the launch-time locate.
+      for (const ev of ['error', 'trackuserlocationend'] as const) {
+        geo.on(ev, () => {
+          autoLocating = false
+        })
+      }
       let movedByHand = false
       map.on('movestart', (e) => {
         if (!e.originalEvent) return
@@ -143,8 +146,8 @@ export function MapScreen({ active }: { active: boolean }) {
         // Open on the angler, zoomed in far enough that gauges, fish records and access points load around them.
         void shouldLocateOnOpen(navigator, openedWith).then((go) => {
           if (!go || cancelled || movedByHand) return
-          autoLocating = true
           geo.trigger()
+          autoLocating = true
         })
       })
     })

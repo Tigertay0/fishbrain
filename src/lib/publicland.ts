@@ -3,7 +3,8 @@
 // asks the PAD-US Public Access service for the name and whether the public can
 // get in. Both are keyless, public domain, and send CORS headers.
 import type { ExpressionSpecification } from 'maplibre-gl'
-import { cachedFetch, DAY, fetchJson } from './cache'
+import { DAY, fetchJson } from './cache'
+import { db } from './db'
 
 export const LAND_TILES =
   'https://tiles.arcgis.com/tiles/v01gqwM5QqNysAAi/arcgis/rest/services/PADUS_Management_Areas_Manager_Type/VectorTileServer/tile/{z}/{y}/{x}.pbf'
@@ -50,7 +51,7 @@ export const MANAGER_COLOR: Partial<Record<ManagerKind, string>> = {
 export const LEGEND: { kind: ManagerKind; label: string }[] = [
   { kind: 'federal', label: 'Federal' },
   { kind: 'state', label: 'State' },
-  { kind: 'local', label: 'City, county, regional' },
+  { kind: 'local', label: 'Local, regional or joint' },
   { kind: 'tribal', label: 'Tribal' },
   { kind: 'ngo', label: 'Conservation group' },
 ]
@@ -174,6 +175,18 @@ const DESIGNATION: Record<string, string> = {
   SP: 'State Park',
 }
 
+const MANAGER_TYPE: Record<string, string> = {
+  FED: 'Federal',
+  STAT: 'State',
+  LOC: 'Local government',
+  DIST: 'Regional agency',
+  JNT: 'Joint',
+  NGO: 'Non-governmental organization',
+  PVT: 'Private',
+  TRIB: 'American Indian lands',
+  TERR: 'Territorial',
+}
+
 type FeeAttrs = { Unit_Nm?: string | null; Pub_Access?: string | null; Mang_Type?: string | null; Mang_Name?: string | null; Des_Tp?: string | null; GIS_Acres?: number | null }
 
 export function parseFee(json: { features?: { attributes?: FeeAttrs }[]; error?: { message?: string } }): LandParcel[] {
@@ -182,6 +195,7 @@ export function parseFee(json: { features?: { attributes?: FeeAttrs }[]; error?:
     name: a.Unit_Nm?.trim() || 'Unnamed public land',
     access: ACCESS_CODE[a.Pub_Access ?? ''] ?? 'unknown',
     manager: AGENCY[a.Mang_Name ?? ''],
+    managerType: MANAGER_TYPE[a.Mang_Type ?? ''],
     designation: DESIGNATION[a.Des_Tp ?? ''],
     acres: a.GIS_Acres != null && a.GIS_Acres > 0 ? Math.round(a.GIS_Acres) : undefined,
     featureClass: 'Fee',
@@ -190,17 +204,18 @@ export function parseFee(json: { features?: { attributes?: FeeAttrs }[]; error?:
 
 /**
  * Ownership first (its access is the one that decides whether you can walk in),
- * filled out with the access service's plain-English names; overlapping
- * designations (wilderness, refuges) follow as extra parcels.
+ * filled out with the access service's plain-English names for the same parcel
+ * only; overlapping designations (wilderness, refuges) follow as extra parcels.
+ * Where ownership overlaps, the smallest parcel is the most specific one.
  */
 export function combineLand(fee: LandParcel[], access: LandParcel[]): LandParcel[] {
   if (!fee.length) return access
-  const [own, ...moreOwn] = fee
+  const [own, ...moreOwn] = [...fee].sort((a, b) => (a.acres ?? Infinity) - (b.acres ?? Infinity))
   const same = access.find((a) => a.name === own.name)
   const main: LandParcel = {
     ...own,
-    manager: own.manager ?? same?.manager ?? access[0]?.manager,
-    managerType: same?.managerType ?? access[0]?.managerType,
+    manager: own.manager ?? same?.manager,
+    managerType: same?.managerType ?? own.managerType,
     designation: own.designation ?? same?.designation,
   }
   const names = new Set([main.name])
@@ -208,16 +223,31 @@ export function combineLand(fee: LandParcel[], access: LandParcel[]): LandParcel
   return [main, ...extra]
 }
 
-/** What public land is at this point. Cached for a month: boundaries change yearly at most. */
-export function lookupLand(lat: number, lon: number) {
-  return cachedFetch(`padus2:${lat.toFixed(4)}:${lon.toFixed(4)}`, 30 * DAY, async () => {
-    const [fee, access] = await Promise.allSettled([
-      fetchJson<Parameters<typeof parseFee>[0]>(feeQueryUrl(lat, lon)).then(parseFee),
-      fetchJson<Parameters<typeof parseLand>[0]>(landQueryUrl(lat, lon)).then(parseLand),
-    ])
-    if (fee.status === 'rejected' && access.status === 'rejected') throw access.reason
-    return combineLand(fee.status === 'fulfilled' ? fee.value : [], access.status === 'fulfilled' ? access.value : [])
-  })
+export type LandLookup = {
+  parcels: LandParcel[]
+  /** false when one of the two services failed: shown as incomplete, and not cached */
+  complete: boolean
+}
+
+const LAND_TTL = 30 * DAY
+
+/** What public land is at this point. Cached for a month (boundaries change yearly at most), but only when both services answered. */
+export async function lookupLand(lat: number, lon: number): Promise<LandLookup> {
+  const key = `padus3:${lat.toFixed(4)}:${lon.toFixed(4)}`
+  const row = await db.apiCache.get(key)
+  if (row && Date.now() - row.savedAt < LAND_TTL) return { parcels: row.data as LandParcel[], complete: true }
+  const [fee, access] = await Promise.allSettled([
+    fetchJson<Parameters<typeof parseFee>[0]>(feeQueryUrl(lat, lon)).then(parseFee),
+    fetchJson<Parameters<typeof parseLand>[0]>(landQueryUrl(lat, lon)).then(parseLand),
+  ])
+  if (fee.status === 'rejected' && access.status === 'rejected') {
+    if (row) return { parcels: row.data as LandParcel[], complete: true }
+    throw access.reason
+  }
+  const parcels = combineLand(fee.status === 'fulfilled' ? fee.value : [], access.status === 'fulfilled' ? access.value : [])
+  const complete = fee.status === 'fulfilled' && access.status === 'fulfilled'
+  if (complete) await db.apiCache.put({ key, savedAt: Date.now(), data: parcels })
+  return { parcels, complete }
 }
 
 export function formatAcres(acres: number): string {

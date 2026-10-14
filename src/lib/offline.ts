@@ -46,8 +46,9 @@ export async function downloadTiles(sources: TileSource[], b: BBox, onProgress: 
       const url = urls[next++]
       try {
         const res = await fetch(url, { signal })
-        if (!res.ok) p.failed++
-        else await res.arrayBuffer() // let the service worker finish caching it
+        // 404 is an empty tile (open ocean, no public land there): nothing to save, nothing missing.
+        if (!res.ok && res.status !== 404) p.failed++
+        else if (res.ok) await res.arrayBuffer() // let the service worker finish caching it
       } catch {
         if (!signal.aborted) p.failed++
       }

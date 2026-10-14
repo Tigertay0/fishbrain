@@ -8,7 +8,7 @@ import { updateSettings, useSettings } from '../lib/settings'
 import { vectorTileTemplate } from '../lib/mapStyle'
 import { downloadTiles, MAX_AREA_TILES, planArea, type Progress, type TileSource } from '../lib/offline'
 import { LAND_MAX_TILE_ZOOM, LAND_MIN_ZOOM, LAND_TILES, LEGEND, MANAGER_COLOR } from '../lib/publicland'
-import type { BBox } from '../lib/geo'
+import { countTiles, type BBox } from '../lib/geo'
 
 const LAYERS: { key: LayerKey; label: string; hint: string }[] = [
   { key: 'publicLand', label: 'Public land', hint: 'Who manages it; tap for the name and whether you can get in (USGS PAD-US)' },
@@ -34,6 +34,7 @@ export function LayersSheet({ map, onClose }: { map: MlMap | null; onClose: () =
   const plan = bbox && map ? planArea(bbox, map.getZoom()) : undefined
   // Public land comes along when it's switched on, so boundaries still show with no signal.
   const landZooms = plan && !('tooBig' in plan) && s.layers.publicLand ? plan.zooms.filter((z) => z >= LAND_MIN_ZOOM && z <= LAND_MAX_TILE_ZOOM) : []
+  const landTiles = bbox && landZooms.length ? countTiles(bbox, landZooms) : 0
 
   const saveArea = async () => {
     if (!template || !bbox || !plan || 'tooBig' in plan) return
@@ -41,7 +42,7 @@ export function LayersSheet({ map, onClose }: { map: MlMap | null; onClose: () =
     abort.current = ctrl
     const sources: TileSource[] = [{ template, zooms: plan.zooms }]
     if (landZooms.length) sources.push({ template: LAND_TILES, zooms: landZooms })
-    setProgress({ done: 0, failed: 0, total: plan.tiles })
+    setProgress({ done: 0, failed: 0, total: plan.tiles + landTiles })
     const result = await downloadTiles(sources, bbox, setProgress, ctrl.signal)
     abort.current = null
     if (ctrl.signal.aborted) {
@@ -124,7 +125,7 @@ export function LayersSheet({ map, onClose }: { map: MlMap | null; onClose: () =
             <>
               <p className="text-sm text-muted">
                 Saves the map you're looking at, zoom {plan.zooms[0]}–{plan.zooms[plan.zooms.length - 1]}: {plan.tiles.toLocaleString()} tiles (limit{' '}
-                {MAX_AREA_TILES.toLocaleString()} per area, no limit on areas){landZooms.length ? ', plus public land boundaries' : ''}. Your catches, markers and the last
+                {MAX_AREA_TILES.toLocaleString()} per area, no limit on areas){landTiles ? `, plus ${landTiles.toLocaleString()} small public land tiles` : ''}. Your catches, markers and the last
                 gauge readings work offline anyway.
               </p>
               <Button variant="primary" onClick={() => void saveArea()}>
