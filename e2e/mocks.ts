@@ -12,12 +12,12 @@ const STYLE = {
   layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#e9e5dc' } }],
 }
 
-export type MockCounts = { usgs: number; meteo: number; overpass: number; nominatim: number }
+export type MockCounts = { usgs: number; meteo: number; overpass: number; nominatim: number; inat: number; hubeau: number; stocking: number }
 
 export type MockOptions = { styleFails?: boolean; /** flip at runtime to simulate losing signal for weather */ meteoDown?: boolean }
 
 export async function mockNetwork(page: Page, opts: MockOptions = {}): Promise<MockCounts> {
-  const counts: MockCounts = { usgs: 0, meteo: 0, overpass: 0, nominatim: 0 }
+  const counts: MockCounts = { usgs: 0, meteo: 0, overpass: 0, nominatim: 0, inat: 0, hubeau: 0, stocking: 0 }
   // Later routes win in Playwright, so the catch-all goes first.
   await page.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/, (r) => r.fulfill({ status: 204, body: '' }))
   await page.route(/tiles\.openfreemap\.org\/styles\/liberty/, (r) => (opts.styleFails ? r.abort('internetdisconnected') : r.fulfill({ json: STYLE })))
@@ -40,6 +40,8 @@ export async function mockNetwork(page: Page, opts: MockOptions = {}): Promise<M
   })
   await page.route(/overpass-api\.de/, (r) => {
     counts.overpass++
+    const body = decodeURIComponent((r.request().postData() ?? '').replace(/^data=/, '').replace(/\+/g, ' '))
+    if (body.includes('is_in(')) return r.fulfill({ json: water(body) })
     return r.fulfill({
       json: {
         elements: [
@@ -49,7 +51,95 @@ export async function mockNetwork(page: Page, opts: MockOptions = {}): Promise<M
       },
     })
   })
+  await page.route(/api\.inaturalist\.org/, (r) => {
+    counts.inat++
+    return r.fulfill({ json: inat(r.request().url()) })
+  })
+  await page.route(/hubeau\.eaufrance\.fr/, (r) => {
+    counts.hubeau++
+    return r.fulfill({
+      status: 206,
+      json: {
+        count: 3,
+        data: [
+          { nom_latin_taxon: 'Salmo trutta', nom_commun_taxon: 'Truite de rivière', effectif_lot: 12 },
+          { nom_latin_taxon: 'Salmo trutta', nom_commun_taxon: 'Truite de rivière', effectif_lot: 3 },
+          { nom_latin_taxon: 'Esox lucius', nom_commun_taxon: 'Brochet', effectif_lot: 2 },
+          { nom_latin_taxon: 'Phoxinus phoxinus', nom_commun_taxon: 'Vairon', effectif_lot: 40 },
+        ],
+      },
+    })
+  })
+  await page.route(/services3\.arcgis\.com\/.*FISH_PLANTS/, (r) => {
+    counts.stocking++
+    return r.fulfill({
+      json: {
+        features: [
+          { attributes: { WATERBODY: 'Missoula Kids Pond', SPECIES: 'Rainbow Trout', NUMFISH: 264, FISHSIZE: 10.4, PLANTDATE: Date.parse('2026-06-09T00:00:00Z') } },
+          { attributes: { WATERBODY: 'Missoula Kids Pond', SPECIES: 'Westslope Cutthroat Trout', NUMFISH: 525, FISHSIZE: 9.8, PLANTDATE: Date.parse('2026-05-28T00:00:00Z') } },
+        ],
+      },
+    })
+  })
   return counts
+}
+
+/** Special test places: */
+export const PLACES = {
+  /** a named lake (Overpass says we're inside it) */
+  lake: { lat: 39.705, lon: -105.11 },
+  /** nothing recorded nearby, so the plan falls back to typical fish */
+  empty: { lat: 45.0, lon: -93.2 },
+  /** salt water */
+  coast: { lat: 30.0, lon: -88.0 },
+  /** France, with official surveys */
+  france: { lat: 45.19, lon: 5.72 },
+  /** Montana, with stocking reports */
+  montana: { lat: 46.8721, lon: -114.006 },
+  /** a public fish sighting (and nothing else) */
+  sighting: { lat: 39.7400666, lon: -105.2701633 },
+}
+
+function water(body: string) {
+  const m = /is_in\(([-\d.]+),([-\d.]+)\)/.exec(body)
+  const lat = Number(m?.[1])
+  const sep = { type: 'sep', id: 1, tags: { kind: 'near' } }
+  if (Math.abs(lat - PLACES.lake.lat) < 0.01)
+    return {
+      elements: [
+        { type: 'way', id: 5, tags: { natural: 'water', water: 'lake', name: 'Test Lake' }, bounds: { minlat: 39.69, minlon: -105.13, maxlat: 39.72, maxlon: -105.09 } },
+        sep,
+      ],
+    }
+  if (Math.abs(lat - PLACES.coast.lat) < 0.01) return { elements: [sep, { type: 'way', id: 6, tags: { natural: 'coastline' } }] }
+  if (Math.abs(lat - PLACES.montana.lat) < 0.01)
+    return { elements: [{ type: 'way', id: 7, tags: { natural: 'water', water: 'pond', name: 'Missoula Kids Pond' }, bounds: { minlat: 46.871, minlon: -114.007, maxlat: 46.873, maxlon: -114.005 } }, sep] }
+  return { elements: [sep, { type: 'way', id: 8, tags: { waterway: 'river', name: 'Clear Creek' } }] }
+}
+
+function inat(rawUrl: string) {
+  const url = new URL(rawUrl)
+  const lat = Number(url.searchParams.get('lat') ?? url.searchParams.get('swlat'))
+  if (Math.abs(lat - PLACES.empty.lat) < 0.01 || Math.abs(lat - PLACES.france.lat) < 0.01) return { total_results: 0, results: [] }
+  const taxon = (name: string, common: string) => ({ name, preferred_common_name: common, rank: 'species' })
+  if (url.pathname.endsWith('/species_counts')) {
+    return {
+      total_results: 4,
+      results: [
+        { count: 14, taxon: taxon('Salmo trutta', 'Brown Trout') },
+        { count: 10, taxon: taxon('Micropterus nigricans', 'Largemouth Bass') },
+        { count: 6, taxon: taxon('Oncorhynchus mykiss', 'Rainbow Trout') },
+        { count: 3, taxon: taxon('Catostomus commersonii', 'White Sucker') },
+      ],
+    }
+  }
+  return {
+    total_results: 2,
+    results: [
+      { id: 383819682, uri: 'https://www.inaturalist.org/observations/383819682', observed_on: '2026-07-21', obscured: false, geojson: { type: 'Point', coordinates: [PLACES.sighting.lon, PLACES.sighting.lat] }, license_code: 'cc-by-nc', taxon: taxon('Oncorhynchus mykiss', 'Rainbow Trout'), user: { login: 'test_observer' } },
+      { id: 2, uri: 'https://www.inaturalist.org/observations/2', observed_on: '2026-07-20', obscured: true, geojson: { type: 'Point', coordinates: [-105.2, 39.75] }, license_code: null, taxon: taxon('Salmo trutta', 'Brown Trout'), user: { login: 'hidden' } },
+    ],
+  }
 }
 
 function usgs(r: Route) {
@@ -125,6 +215,7 @@ export function meteo(rawUrl: string) {
       temperature_2m_min: dailyTime.map(() => 2),
       precipitation_sum: dailyTime.map(() => 0),
       precipitation_probability_max: dailyTime.map(() => 10),
+      temperature_2m_mean: dailyTime.map((_, d) => 6 + d * 0.3),
       wind_speed_10m_max: dailyTime.map(() => 14),
     },
   }

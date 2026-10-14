@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { Gauge } from './usgs'
 import type { Place } from './overpass'
+import type { Sighting } from './publicdata'
 
 /** A tiny observable id → item map, shared by the map, sheets and forecast. */
 function createStore<T extends { id: string }>() {
@@ -25,6 +26,8 @@ function createStore<T extends { id: string }>() {
 
 export const gaugeStore = createStore<Gauge>()
 export const placeStore = createStore<Place>()
+export const sightingStore = createStore<Sighting>()
 
 export const useGauges = () => useSyncExternalStore(gaugeStore.subscribe, gaugeStore.getSnapshot)
 export const usePlaces = () => useSyncExternalStore(placeStore.subscribe, placeStore.getSnapshot)
+export const useSightings = () => useSyncExternalStore(sightingStore.subscribe, sightingStore.getSnapshot)

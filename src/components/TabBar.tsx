@@ -1,9 +1,9 @@
 import { NavLink } from 'react-router-dom'
-import { BookOpenText, CloudSun, Map as MapIcon, Menu, Plus } from 'lucide-react'
+import { BookOpenText, Map as MapIcon, Menu, Plus, Sparkles } from 'lucide-react'
 
 const TABS = [
   { to: '/', label: 'Map', icon: MapIcon, end: true },
-  { to: '/forecast', label: 'Forecast', icon: CloudSun },
+  { to: '/plan', label: 'What to use', icon: Sparkles },
   { to: '/log', label: 'Log catch', icon: Plus, primary: true },
   { to: '/logbook', label: 'Logbook', icon: BookOpenText },
   { to: '/more', label: 'More', icon: Menu },

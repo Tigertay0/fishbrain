@@ -9,7 +9,7 @@ test('every tab renders with no console errors', async ({ page }, info) => {
   await expect(page.getByRole('search')).toBeVisible()
   await page.screenshot({ path: info.outputPath('map.png') })
   for (const [tab, heading] of [
-    ['Forecast', 'Forecast'],
+    ['What to use', 'What to use'],
     ['Logbook', 'Logbook'],
     ['More', 'More'],
   ] as const) {

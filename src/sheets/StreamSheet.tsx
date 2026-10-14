@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CloudSun, Fish, MapPinPlus, Navigation } from 'lucide-react'
+import { CloudSun, Fish, MapPinPlus, Navigation, Sparkles } from 'lucide-react'
 import { Button, Chip, Field, inputClass, Sheet } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { db, nowIso, type StreamNote } from '../lib/db'
@@ -13,10 +13,10 @@ import { nearestGauges, type Gauge } from '../lib/usgs'
 import { formatDistance, formatFlow, formatTemp, formatLength } from '../lib/units'
 import { useSettings } from '../lib/settings'
 import { formatDate } from '../lib/format'
-import { SPECIES } from '../lib/species'
+import { PROFILES } from '../lib/species'
 
 const CLASS_SUGGESTIONS = ['Wild trout', 'Stocked', 'Catch and release', 'Artificial lures only', 'Delayed harvest', 'Trophy water']
-const TROUT = SPECIES.filter((s) => s.group === 'trout').map((s) => s.name)
+const TROUT = PROFILES.filter((s) => s.group === 'trout').map((s) => s.name)
 
 export function StreamSheet({
   hit,
@@ -77,7 +77,10 @@ export function StreamSheet({
       onClose={onClose}
       actions={
         <>
-          <Button variant="primary" onClick={() => nav(`/log?${q}${hit.name ? `&water=${encodeURIComponent(hit.name)}` : ''}`)}>
+          <Button variant="primary" onClick={() => nav(`/plan?${q}&type=${hit.kind === 'river' ? 'river' : 'stream'}${hit.name ? `&name=${encodeURIComponent(hit.name)}` : ''}`)}>
+            <Sparkles size={18} /> What to use here
+          </Button>
+          <Button onClick={() => nav(`/log?${q}${hit.name ? `&water=${encodeURIComponent(hit.name)}` : ''}`)}>
             <Fish size={18} /> Log a catch here
           </Button>
           <Button onClick={() => onAddMarker(hit, hit.name)}>

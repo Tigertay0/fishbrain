@@ -31,10 +31,11 @@ export const LAYER_GROUPS: Record<LayerKey, string[]> = {
   catches: ['catches-circle'],
   markers: ['markers-circle', 'markers-label'],
   amenities: ['places-circle'],
+  sightings: ['sightings-circle'],
 }
 
 /** Layers a tap can hit, best first. */
-export const HIT_LAYERS = ['markers-circle', 'catches-circle', 'gauges-circle', 'places-circle', 'streams-hit']
+export const HIT_LAYERS = ['markers-circle', 'catches-circle', 'gauges-circle', 'sightings-circle', 'places-circle', 'streams-hit', 'water-hit']
 
 const css = (name: string, fallback: string) =>
   (typeof document !== 'undefined' && getComputedStyle(document.documentElement).getPropertyValue(`--tl-${name}`).trim()) || fallback
@@ -83,9 +84,35 @@ export function addOverlays(map: MlMap, basemap: Basemap): void {
       firstSymbol,
     )
     map.addLayer({ ...common, id: 'streams-hit', paint: { 'line-color': water, 'line-opacity': 0.01, 'line-width': 20 } })
+    // Lakes, ponds and wide rivers: an invisible fill so a tap on open water opens it.
+    map.addLayer(
+      {
+        id: 'water-hit',
+        type: 'fill',
+        source: BASE_SOURCE,
+        'source-layer': 'water',
+        filter: ['match', ['get', 'class'], ['lake', 'river', 'pond', 'dock'], true, false],
+        paint: { 'fill-color': water, 'fill-opacity': 0.01 },
+      },
+      'streams-casing',
+    )
   }
 
-  for (const id of ['places', 'gauges', 'catches', 'markers']) if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data: EMPTY })
+  for (const id of ['places', 'sightings', 'gauges', 'catches', 'markers']) if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data: EMPTY })
+
+  map.addLayer({
+    id: 'sightings-circle',
+    type: 'circle',
+    source: 'sightings',
+    minzoom: 9,
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 3, 14, 6],
+      'circle-color': css('sighting', '#6a4c9c'),
+      'circle-opacity': 0.85,
+      'circle-stroke-color': halo,
+      'circle-stroke-width': 1,
+    },
+  })
 
   map.addLayer({
     id: 'places-circle',
@@ -102,6 +129,7 @@ export function addOverlays(map: MlMap, basemap: Basemap): void {
         'camp', css('success', '#2b6e2f'),
         'bridge', css('cold', '#2a5f9e'),
         'fishing', css('accent-strong', '#8a3812'),
+        'pier', css('accent-strong', '#8a3812'),
         css('text-muted', '#5e574b'),
       ],
       'circle-stroke-color': halo,
@@ -177,6 +205,14 @@ export function setLayerVisibility(map: MlMap, layers: Record<LayerKey, boolean>
   for (const [key, ids] of Object.entries(LAYER_GROUPS)) {
     for (const id of ids) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', layers[key as LayerKey] ? 'visible' : 'none')
   }
+}
+
+/** Style layers that label lakes and rivers, used to name the water someone tapped. */
+export function waterNameLayers(map: MlMap): string[] {
+  return map
+    .getStyle()
+    .layers.filter((l) => 'source-layer' in l && l['source-layer'] === 'water_name')
+    .map((l) => l.id)
 }
 
 /** The vector tile URL template, for offline downloads. Undefined on the fallback style. */

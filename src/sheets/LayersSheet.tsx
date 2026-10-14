@@ -14,6 +14,7 @@ const LAYERS: { key: LayerKey; label: string; hint: string }[] = [
   { key: 'gauges', label: 'USGS gauges', hint: 'Live flow and water temp, colour = trout temp' },
   { key: 'catches', label: 'My catches', hint: 'Only on this device' },
   { key: 'markers', label: 'My markers', hint: 'Access, parking, runs' },
+  { key: 'sightings', label: 'Fish sightings', hint: 'Where fish were recorded (iNaturalist, last 10 years)' },
   { key: 'amenities', label: 'Shops, ramps and access', hint: 'From OpenStreetMap, unverified' },
 ]
 

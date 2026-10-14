@@ -21,7 +21,7 @@ export default defineConfig({
       manifest: {
         name: 'Tailout',
         short_name: 'Tailout',
-        description: 'Trout streams, river gauges, fishing forecasts and a private catch log. Works offline.',
+        description: 'What to use at any water: rigs, bait and lures for the fish that live there, from public records. Plus river gauges, forecasts and a private catch log. Works offline.',
         theme_color: '#a6461a',
         background_color: '#fbfaf7',
         display: 'standalone',

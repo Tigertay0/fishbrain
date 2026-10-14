@@ -5,11 +5,12 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Layers, MapPinPlus, Search, X } from 'lucide-react'
 import { db, type Marker } from '../lib/db'
 import { getSettings, updateSettings, useSettings } from '../lib/settings'
-import { addOverlays, FALLBACK_STYLE, HIT_LAYERS, setBasemap, setLayerVisibility, STYLE_URL } from '../lib/mapStyle'
+import { addOverlays, FALLBACK_STYLE, HIT_LAYERS, setBasemap, setLayerVisibility, STYLE_URL, waterNameLayers } from '../lib/mapStyle'
 import { cellsForBBox, type BBox, type LngLat } from '../lib/geo'
 import { GAUGE_CELL_DEG, GAUGE_MIN_ZOOM, loadGaugeCell, troutTempBand, type Gauge } from '../lib/usgs'
 import { AMENITY_CELL_DEG, AMENITY_MIN_ZOOM, loadPlacesCell, type Place } from '../lib/overpass'
-import { gaugeStore, placeStore, useGauges, usePlaces } from '../lib/store'
+import { gaugeStore, placeStore, sightingStore, useGauges, usePlaces, useSightings } from '../lib/store'
+import { loadSightingsCell, SIGHTING_CELL_DEG, SIGHTING_MIN_ZOOM, type Sighting } from '../lib/publicdata'
 import { formatFlow, formatTemp } from '../lib/units'
 import { searchPlaces, type SearchResult } from '../lib/search'
 import { FetchError } from '../lib/cache'
@@ -21,6 +22,8 @@ import { StreamSheet } from '../sheets/StreamSheet'
 import { MarkerSheet } from '../sheets/MarkerSheet'
 import { PlaceSheet } from '../sheets/PlaceSheet'
 import { LayersSheet } from '../sheets/LayersSheet'
+import { SightingSheet } from '../sheets/SightingSheet'
+import { WaterSheet, type WaterHit } from '../sheets/WaterSheet'
 
 export type Selection =
   | { type: 'gauge'; gauge: Gauge }
@@ -28,6 +31,8 @@ export type Selection =
   | { type: 'marker'; marker?: Marker; point: LngLat; preset?: Partial<Marker> }
   | { type: 'place'; place: Place }
   | { type: 'layers' }
+  | { type: 'sighting'; sighting: Sighting }
+  | { type: 'water'; hit: WaterHit }
 
 const US_CENTER: [number, number] = [-98.35, 39.5]
 
@@ -41,9 +46,10 @@ export function MapScreen({ active }: { active: boolean }) {
   const [ready, setReady] = useState(0) // bumps on every style load
   const [basemapDown, setBasemapDown] = useState(false)
   const [sel, setSel] = useState<Selection | null>(null)
-  const [hints, setHints] = useState<{ gauges?: string; places?: string }>({})
+  const [hints, setHints] = useState<{ gauges?: string; places?: string; sightings?: string }>({})
   const gauges = useGauges()
   const places = usePlaces()
+  const sightings = useSightings()
   const catches = useLiveQuery(() => db.catches.toArray(), [])
   const markers = useLiveQuery(() => db.markers.toArray(), [])
   const settingsRef = useRef(settings)
@@ -136,6 +142,9 @@ export function MapScreen({ active }: { active: boolean }) {
     const g = pick('gauges-circle')
     const gauge = g && gaugeStore.get(String(g.properties.id))
     if (gauge) return setSel({ type: 'gauge', gauge })
+    const fs = pick('sightings-circle')
+    const sighting = fs && sightingStore.get(String(fs.properties.id))
+    if (sighting) return setSel({ type: 'sighting', sighting })
     const p = pick('places-circle')
     const place = p && placeStore.get(String(p.properties.id))
     if (place) return setSel({ type: 'place', place })
@@ -147,6 +156,22 @@ export function MapScreen({ active }: { active: boolean }) {
         type: 'stream',
         hit: { name, kind: String(props.class ?? 'stream'), intermittent: props.intermittent === 1, lat: lngLat.lat, lon: lngLat.lng },
       })
+    }
+    const w = pick('water-hit')
+    if (w) {
+      // Water polygons carry no names; the label layer near the tap usually does.
+      const nameLayers = waterNameLayers(map)
+      const labels = nameLayers.length
+        ? map.queryRenderedFeatures(
+            [
+              [point.x - 80, point.y - 60],
+              [point.x + 80, point.y + 60],
+            ],
+            { layers: nameLayers },
+          )
+        : []
+      const name = labels.map((l) => (l.properties['name:en'] || l.properties.name_en || l.properties.name) as string | undefined).find(Boolean)
+      return setSel({ type: 'water', hit: { name, kind: String(w.properties.class ?? 'lake'), lat: lngLat.lat, lon: lngLat.lng } })
     }
     setSel(null)
   }
@@ -180,6 +205,22 @@ export function MapScreen({ active }: { active: boolean }) {
         }
       }
     } else setHints((h) => ({ ...h, gauges: undefined }))
+
+    if (s.layers.sightings) {
+      const cells = z >= SIGHTING_MIN_ZOOM ? cellsForBBox(bbox, SIGHTING_CELL_DEG, 6) : null
+      if (!cells) setHints((h) => ({ ...h, sightings: 'Zoom in to see where fish have been recorded' }))
+      else {
+        setHints((h) => ({ ...h, sightings: undefined }))
+        for (const cell of cells) {
+          try {
+            sightingStore.upsert((await loadSightingsCell(cell)).data)
+          } catch {
+            setHints((h) => ({ ...h, sightings: 'Fish sightings unavailable right now' }))
+            break
+          }
+        }
+      }
+    } else setHints((h) => ({ ...h, sightings: undefined }))
 
     if (s.layers.amenities) {
       const cells = z >= AMENITY_MIN_ZOOM ? cellsForBBox(bbox, AMENITY_CELL_DEG, 6) : null
@@ -216,6 +257,14 @@ export function MapScreen({ active }: { active: boolean }) {
       })),
     })
   }, [gauges, ready, settings.units])
+
+  useEffect(() => {
+    const src = mapRef.current?.getSource('sightings') as GeoJSONSource | undefined
+    src?.setData({
+      type: 'FeatureCollection',
+      features: sightings.map((x) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [x.lon, x.lat] }, properties: { id: x.id } })),
+    })
+  }, [sightings, ready])
 
   useEffect(() => {
     const src = mapRef.current?.getSource('places') as GeoJSONSource | undefined
@@ -300,6 +349,7 @@ export function MapScreen({ active }: { active: boolean }) {
         {basemapDown ? <Hint>Basemap unavailable. Showing your data only.</Hint> : null}
         {settings.layers.gauges && hints.gauges ? <Hint>{hints.gauges}</Hint> : null}
         {settings.layers.amenities && hints.places ? <Hint>{hints.places}</Hint> : null}
+        {settings.layers.sightings && hints.sightings && !hints.gauges ? <Hint>{hints.sightings}</Hint> : null}
       </div>
 
       {sel?.type === 'gauge' ? <GaugeSheet gauge={sel.gauge} onClose={() => setSel(null)} /> : null}
@@ -319,6 +369,8 @@ export function MapScreen({ active }: { active: boolean }) {
           onSave={(p) => setSel({ type: 'marker', point: { lat: p.lat, lon: p.lon }, preset: { name: p.name ?? '', kind: p.kind === 'parking' ? 'parking' : p.kind === 'bridge' ? 'bridge' : p.kind === 'camp' ? 'camp' : 'access' } })}
         />
       ) : null}
+      {sel?.type === 'sighting' ? <SightingSheet sighting={sel.sighting} onClose={() => setSel(null)} /> : null}
+      {sel?.type === 'water' ? <WaterSheet hit={sel.hit} onClose={() => setSel(null)} /> : null}
       {sel?.type === 'layers' ? <LayersSheet map={mapRef.current} onClose={() => setSel(null)} /> : null}
     </div>
   )

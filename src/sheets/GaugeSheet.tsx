@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowDownRight, ArrowRight, ArrowUpRight, CloudSun, ExternalLink, Fish, Navigation } from 'lucide-react'
+import { ArrowDownRight, ArrowRight, ArrowUpRight, CloudSun, ExternalLink, Fish, Navigation, Sparkles } from 'lucide-react'
 import { Button, Sheet, StatTile, type Tone } from '../components/ui'
 import { Sparkline } from '../components/Sparkline'
 import { useSettings } from '../lib/settings'
@@ -67,7 +67,13 @@ export function GaugeSheet({ gauge, onClose }: { gauge: Gauge; onClose: () => vo
       onClose={onClose}
       actions={
         <>
-          <Button variant="primary" onClick={() => nav(`/log?lat=${gauge.lat}&lon=${gauge.lon}${name ? `&water=${encodeURIComponent(waterFromGaugeName(name))}` : ''}`)}>
+          <Button
+            variant="primary"
+            onClick={() => nav(`/plan?lat=${gauge.lat}&lon=${gauge.lon}&type=river${name ? `&name=${encodeURIComponent(waterFromGaugeName(name))}` : ''}`)}
+          >
+            <Sparkles size={18} /> What to use here
+          </Button>
+          <Button onClick={() => nav(`/log?lat=${gauge.lat}&lon=${gauge.lon}${name ? `&water=${encodeURIComponent(waterFromGaugeName(name))}` : ''}`)}>
             <Fish size={18} /> Log a catch here
           </Button>
           <Button onClick={() => nav(`/forecast?lat=${gauge.lat}&lon=${gauge.lon}&name=${encodeURIComponent(title)}`)}>

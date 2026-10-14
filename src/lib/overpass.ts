@@ -7,13 +7,14 @@ export const AMENITY_CELL_DEG = 0.1
 export const AMENITY_MIN_ZOOM = 12
 const ENDPOINT = 'https://overpass-api.de/api/interpreter'
 
-export type PlaceKind = 'shop' | 'slipway' | 'fishing' | 'camp' | 'parking' | 'bridge'
+export type PlaceKind = 'shop' | 'slipway' | 'fishing' | 'pier' | 'camp' | 'parking' | 'bridge'
 export type Place = { id: string; kind: PlaceKind; name?: string; lat: number; lon: number; osmUrl: string }
 
 export const PLACE_LABEL: Record<PlaceKind, string> = {
   shop: 'Fishing shop',
   slipway: 'Boat ramp',
   fishing: 'Fishing spot',
+  pier: 'Fishing pier',
   camp: 'Campsite',
   parking: 'Parking near a stream',
   bridge: 'Bridge over water',
@@ -28,6 +29,7 @@ way["waterway"~"^(river|stream)$"](${box})->.w;
   nwr["shop"="fishing"](${box});
   nwr["leisure"="slipway"](${box});
   nwr["leisure"="fishing"](${box});
+  nwr["man_made"="pier"]["fishing"="yes"](${box});
   nwr["tourism"="camp_site"](${box});
   nwr["amenity"="parking"]["access"!~"^(private|no|customers)$"](around.w:150);
   way["bridge"="yes"]["highway"]["highway"!~"^(motorway|motorway_link|trunk|trunk_link)$"](around.w:5);
@@ -59,7 +61,9 @@ export function parsePlaces(json: { elements?: Element[] }): Place[] {
           ? 'slipway'
           : t.leisure === 'fishing'
             ? 'fishing'
-            : t.tourism === 'camp_site'
+            : t.man_made === 'pier'
+              ? 'pier'
+              : t.tourism === 'camp_site'
               ? 'camp'
               : t.amenity === 'parking'
                 ? 'parking'

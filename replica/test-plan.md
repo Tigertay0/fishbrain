@@ -33,14 +33,25 @@ Every spec fails on any console error, page error or 5xx, and runs an axe WCAG 2
 | F07-H1 | data | happy | back up JSON, wipe, restore | e2e | pass |
 | F07-N1 | | negative | non-backup JSON refused | e2e + unit | pass |
 | F07-H2 | | CSV | header + formula injection neutralised | e2e + unit | pass |
+| F08-H1 | what to use | happy: river | species from records, rig diagram, bait, lures, why; non-target fish listed apart | e2e | pass |
+| F08-H2 | | edge: thermometer + method | 74°F demotes trout with a warning; fly-only shows flies, no bait | e2e | pass |
+| F08-H3 | | happy: lake from coordinates | Overpass names the lake and its type | e2e | pass |
+| F08-E1 | | edge: no records | typical fish for the water type, said plainly | e2e | pass |
+| F08-E2 | | edge: salt water | refuses with a reason | e2e | pass |
+| F08-H4 | | France | Hub'Eau surveys count as evidence | e2e | pass |
+| F08-H5 | | Montana | stocking events listed and counted | e2e | pass |
+| F08-H6 | | sighting → plan | map dot → sheet with observer + licence → plan led by that fish | e2e | pass |
+| F08-H7 | rig guide | | filter by method, diagram, steps | e2e | pass |
+| F08-U | engine | unit | phases through the year, southern hemisphere, warm-spell-in-fall, synonyms, injection-safe LIKE terms | unit | pass |
 | PWA-1 | offline shell | happy | after one visit, logbook and logging work with network cut; manifest valid | e2e | pass |
 | A11Y | all screens | axe | 0 violations | e2e | pass |
 
-Totals: 21 unit tests, 48 e2e runs (24 specs × 2 viewports), all passing.
+Totals: 42 unit tests, 66 e2e runs (33 specs × 2 viewports), all passing.
 
 ## Manual checks still owed
 
 - Stream lines and stream taps against live OpenFreeMap tiles (the `waterway` source layer).
 - "Save this area" end to end, then airplane mode in the field.
-- Real USGS, Open-Meteo, Overpass and Nominatim responses in a browser (CORS).
+- Real USGS, Open-Meteo, Overpass, Nominatim, iNaturalist, Hub'Eau and stocking responses in a browser (CORS is unverified for the self-hosted state servers).
+- Advice sanity check on real water with a local angler.
 - iOS Safari: install to home screen, photo from camera, storage persistence.

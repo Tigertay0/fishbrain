@@ -1,23 +1,23 @@
-## Parity: 97.6 / 100
+## Parity: 97.9 / 100
 
-features 97.6  (35 counted, must-haves 17 of 17 done)
+features 97.9  (41 counted, must-haves 20 of 20 done)
 
 ## By area, weakest first
 - offline                       80.0  (2 features)
-- forecast                      91.7  (5 features)
-- map                          100.0  (9 features)
+- forecast                      94.4  (8 features)
+- map                          100.0  (11 features)
 - gauges                       100.0  (3 features)
 - logbook                      100.0  (7 features)
 - markers                      100.0  (1 features)
 - stats                        100.0  (1 features)
 - streams                      100.0  (2 features)
 - settings                     100.0  (2 features)
-- species                      100.0  (1 features)
+- species                      100.0  (2 features)
 - platform                     100.0  (2 features)
 
 ## Missing, in build order
 - [should] offline: Download a map area for offline use, partial  (TroutRoutes offline maps; built (2,500-tile areas, version-free tile cache keys) but not run against live OpenFreeMap tiles yet)
-- [could] forecast: Lure or fly suggestions for conditions, no  (Fishbrain lure recs; ours would be a simple rule table; not built)
+- [could] forecast: Saltwater advice, no  (not built: tides needed; the app says so instead of guessing)
 
 ## Left out on purpose (not scored)
 - Elevation profile of a stream: needs a DEM service; later
@@ -43,6 +43,11 @@ features 97.6  (35 counted, must-haves 17 of 17 done)
 - F6 Streams drawn in a water colour distinct from roads
 - F7 Per-stream regs link with date checked
 - F8 No review prompts or nags
+- Rig guide with diagrams and steps
+- Public fish records layer on the map
+- State stocking reports
+- Water temperature estimate when nothing measures it
+- French national fish surveys (Hub'Eau)
 
 ## What the number leaves out
 
@@ -75,8 +80,8 @@ must-haves done, feature score 97.6, no open S1 or S2 bugs, and the fixes from
 until the stream-classification and access data gap is closed.
 
 Top five next:
-1. Run the manual live-data checks (tiles, USGS, Open-Meteo, Overpass in a real browser).
-2. Field-test "Save this area" in airplane mode.
-3. Public-land layer (PAD-US) as hosted vector tiles.
-4. State regulation links table (one official URL per state, dated).
-5. Fly suggestions by water temperature and season (simple rule table).
+1. Run the manual live-data checks (tiles, USGS, Open-Meteo, Overpass, iNaturalist, Hub'Eau, stocking endpoints, CORS) in a real browser.
+2. Field-test "Save this area" and the advice on real water.
+3. Saltwater: tides (NOAA CO-OPS), inshore species, surf and pier rigs.
+4. More stocking states (NH, UT history) and lake surveys (MN LakeFinder) where the APIs allow.
+5. Public-land layer (PAD-US) as hosted vector tiles.

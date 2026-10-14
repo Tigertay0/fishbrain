@@ -10,7 +10,10 @@ export type HourScore = { t: number; score: number; factors: Factor[]; window?: 
 
 const TEMP_MULT: Record<TempBand, number> = { cold: 0.55, cool: 0.8, prime: 1, warm: 0.8, stress: 0.4 }
 
-export function scoreHour(t: number, sol: Solunar, f: Forecast | undefined, waterTempC?: number): HourScore {
+/** A species' temperature preference (°F). Without one, the score uses trout bands. */
+export type TempPref = { name: string; active: [number, number]; best: [number, number] }
+
+export function scoreHour(t: number, sol: Solunar, f: Forecast | undefined, waterTempC?: number, pref?: TempPref): HourScore {
   const factors: Factor[] = [{ label: 'Baseline', points: 25 }]
   const mid = t + 30 * MINUTE // score the middle of the hour
   let window: HourScore['window']
@@ -45,20 +48,33 @@ export function scoreHour(t: number, sol: Solunar, f: Forecast | undefined, wate
 
   let score = factors.reduce((s, x) => s + x.points, 0)
   if (waterTempC != null) {
-    const band = troutTempBand(waterTempC)
-    const mult = TEMP_MULT[band]
+    const { mult, label } = pref ? prefFit(waterTempC, pref) : troutFit(waterTempC)
     if (mult !== 1) {
       const pts = Math.round(score * mult) - score
-      factors.push({ label: `Water ${band === 'stress' ? 'too warm' : band} for trout`, points: pts })
+      factors.push({ label, points: pts })
       score += pts
     }
   }
   return { t, score: clamp(Math.round(score)), factors, window }
 }
 
-export function scoreDay(dayStart: number, sol: Solunar, f: Forecast | undefined, waterTempC?: number): HourScore[] {
+function troutFit(c: number) {
+  const band = troutTempBand(c)
+  return { mult: TEMP_MULT[band], label: `Water ${band === 'stress' ? 'too warm' : band} for trout` }
+}
+
+/** 1 in the best range, 0.8 in the active range, then falling off the further outside it is. */
+export function prefFit(c: number, pref: TempPref): { mult: number; label: string } {
+  const f = (c * 9) / 5 + 32
+  if (f >= pref.best[0] && f <= pref.best[1]) return { mult: 1, label: '' }
+  if (f >= pref.active[0] && f <= pref.active[1]) return { mult: 0.8, label: `Water outside the best range for ${pref.name}` }
+  const off = f < pref.active[0] ? pref.active[0] - f : f - pref.active[1]
+  return { mult: off > 8 ? 0.35 : 0.5, label: `Water too ${f < pref.active[0] ? 'cold' : 'warm'} for ${pref.name}` }
+}
+
+export function scoreDay(dayStart: number, sol: Solunar, f: Forecast | undefined, waterTempC?: number, pref?: TempPref): HourScore[] {
   const out: HourScore[] = []
-  for (let i = 0; i < 24; i++) out.push(scoreHour(dayStart + i * 60 * MINUTE, sol, f, waterTempC))
+  for (let i = 0; i < 24; i++) out.push(scoreHour(dayStart + i * 60 * MINUTE, sol, f, waterTempC, pref))
   return out
 }
 

@@ -4,6 +4,8 @@ import { ToastProvider, useToast } from './components/Toast'
 import { TabBar } from './components/TabBar'
 import { MapScreen } from './screens/MapScreen'
 import { ForecastScreen } from './screens/ForecastScreen'
+import { PlanScreen } from './screens/PlanScreen'
+import { RigDetailScreen, RigsScreen } from './screens/RigsScreen'
 import { LogCatchScreen } from './screens/LogCatchScreen'
 import { LogbookScreen } from './screens/LogbookScreen'
 import { CatchDetailScreen } from './screens/CatchDetailScreen'
@@ -48,6 +50,9 @@ function Shell() {
       {!onMap ? (
         <div className="absolute inset-0" id="main-content">
           <Routes>
+            <Route path="/plan" element={<PlanScreen />} />
+            <Route path="/rigs" element={<RigsScreen />} />
+            <Route path="/rigs/:id" element={<RigDetailScreen />} />
             <Route path="/forecast" element={<ForecastScreen />} />
             <Route path="/log" element={<LogCatchScreen key="new" />} />
             <Route path="/catch/:id" element={<CatchDetailScreen />} />
@@ -68,6 +73,8 @@ function Shell() {
 
 const TITLES: Record<string, string> = {
   '': 'Tailout · Map',
+  plan: 'What to use · Tailout',
+  rigs: 'Rig guide · Tailout',
   forecast: 'Forecast · Tailout',
   log: 'Log a catch · Tailout',
   catch: 'Catch · Tailout',

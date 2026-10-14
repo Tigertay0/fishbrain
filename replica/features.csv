@@ -30,7 +30,7 @@ Fly shops and access amenities near streams,map,should,yes,yes,"from OSM: fishin
 Directions to a point,map,should,yes,yes,hands off to the device maps app; hands off to Apple/Google Maps
 Units: imperial or metric,settings,should,yes,yes,
 Species guide,species,could,yes,yes,"Fishbrain species pages; 12 species, written fresh"
-Lure or fly suggestions for conditions,forecast,could,yes,no,Fishbrain lure recs; ours would be a simple rule table; not built
+Lure or fly suggestions for conditions,forecast,could,yes,yes,"Fishbrain lure recs; built as a per-species engine: rig, bait, lures, flies, colours by clarity and local baitfish, tackle, with reasons"
 Export my data,settings,could,yes,yes,"JSON with photos, CSV"
 Import my data,settings,could,no,yes,"our addition; newer-wins merge, validates privacy"
 Install as an app (PWA),platform,could,yes,yes,both apps are native installs; manifest + maskable icon; install prompt
@@ -55,3 +55,14 @@ F5 Unverified-access warning on OSM amenities and bridges,map,should,no,yes,fixe
 F6 Streams drawn in a water colour distinct from roads,map,should,no,yes,fixes.md F6
 F7 Per-stream regs link with date checked,streams,should,no,yes,fixes.md F7
 F8 No review prompts or nags,product,could,no,yes,fixes.md F8
+"All freshwater species: lakes, ponds, rivers and streams",species,must,yes,yes,"20 species profiles (North America and Europe), species matched by scientific name incl. synonyms"
+"Which fish live in this water, from public records",map,must,yes,yes,originals use their own users' catches; ours: iNaturalist research-grade records + French OFB surveys + state stocking
+"What to use here: rig, bait, lure, fly, where and how",forecast,must,yes,yes,"S14; Fishbrain BiteGuide-style advice, ours shows its reasons"
+Species-specific best times today,forecast,should,yes,yes,bite score with each species' temperature preference
+Tap a lake or pond on the map,map,should,yes,yes,water polygons from basemap tiles + OSM lookup
+Rig guide with diagrams and steps,species,should,no,yes,"19 rigs, drawn diagrams"
+Public fish records layer on the map,map,should,no,yes,"iNaturalist, last 10 years, obscured points excluded; partial stand-in for the skipped crowd catch map"
+State stocking reports,map,should,no,partial,"Montana (by area), Washington, New York, Massachusetts (by water name); other states not covered"
+Water temperature estimate when nothing measures it,forecast,could,no,yes,from 2 weeks of air temperature; user reading overrides
+French national fish surveys (Hub'Eau),map,could,no,yes,OFB electrofishing records near the water
+Saltwater advice,forecast,could,yes,no,not built: tides needed; the app says so instead of guessing

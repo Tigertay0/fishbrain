@@ -1,7 +1,23 @@
 # Tailout
 
-A free trout-fishing PWA: every stream, live USGS river gauges, a forecast that
-explains itself, and a catch log that never leaves your phone. Works offline.
+A free fishing PWA. Stand at any lake, pond, river or stream and it tells you
+which fish live there (from public records), and what to use for each: the rig
+(with a diagram and how to tie it), bait, lures, flies, colours, where to cast
+and how to work it, with the reasons. Plus live USGS river gauges, a forecast
+that explains itself, and a catch log that never leaves your phone. Works offline.
+
+- **What to use here**: 20 species (bass, panfish, crappie, perch, walleye,
+  zander, pike, catfish, carp, trout, grayling, white bass and stripers,
+  European coarse fish). Advice changes with water type, season (pre-spawn,
+  spawn, summer, fall, cold, hot), water temperature (gauge, your thermometer,
+  or an estimate from recent air temperature), clarity and how you like to
+  fish (bait, lures, fly). Falls back to "typical fish for this water" when
+  nothing is recorded, and says so. Salt water is out of scope for now.
+- **Where to fish, from public data**: iNaturalist research-grade fish
+  records near the water and as a map layer; French national electrofishing
+  surveys (OFB via Hub'Eau); recent stocking in Montana, Washington, New York
+  and Massachusetts; OpenStreetMap fishing piers, ramps and spots.
+- **Rig guide**: 19 rigs drawn as diagrams with step-by-step setup.
 
 - **Map**: streams and rivers drawn from the basemap's own vector tiles; tap one
   for nearby gauges, your notes, your regulations link and your catches there.
@@ -50,7 +66,10 @@ vite-plugin-pwa with a custom Workbox service worker (`src/sw.ts`). No backend.
 | topo, imagery | USGS The National Map | public domain |
 | gauges | USGS Water Data OGC API v1 | 50 requests/hour/IP without a key; add your own free key in Settings for 1,000 |
 | weather | Open-Meteo | free for non-commercial use; needs a paid plan (or NWS) before selling |
-| places | Overpass API (OpenStreetMap) | on demand, cached 14 days |
+| places, water bodies | Overpass API (OpenStreetMap) | on demand, cached 14–30 days |
+| fish records | iNaturalist API | research grade, last 10 years; ≤1 request/s; observer and licence shown |
+| fish surveys (France) | Hub'Eau, OFB electrofishing | within the search radius of the water |
+| stocking | Montana FWP, WDFW, NYSDEC, MassWildlife open data | MT by area; the others by water name |
 | search | Nominatim | on submit only, per its usage policy |
 
 The legacy USGS WaterServices API shuts down on 2027-02-22; this app already

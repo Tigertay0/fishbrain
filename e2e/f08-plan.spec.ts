@@ -1,0 +1,106 @@
+import { test, expect } from '@playwright/test'
+import { GOLDEN, mockNetwork, PLACES } from './mocks'
+import { axe, guard } from './helpers'
+
+test.describe('F08 what to use at this water', () => {
+  test('F08-H1 a river: species from public records, a rig with a diagram, bait, lures and why', async ({ page }) => {
+    const check = guard(page)
+    await mockNetwork(page)
+    await page.goto(`/plan?lat=${GOLDEN.lat}&lon=${GOLDEN.lon}&type=river&name=Clear%20Creek`)
+    await expect(page.getByRole('heading', { level: 2, name: 'Clear Creek' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Best bets here' })).toBeVisible()
+    // The most-recorded fish leads, with its evidence.
+    const first = page.getByRole('region', { name: 'Best bets' }).locator('details').first()
+    await expect(first).toContainText('Brown trout')
+    await expect(first).toContainText('14 public records nearby')
+    await expect(first.getByRole('img', { name: /Diagram of a/ })).toBeVisible()
+    await expect(first).toContainText('Bait:')
+    await expect(first).toContainText('Lures:')
+    await expect(first).toContainText('Why:')
+    // Not a target species, but recorded: listed separately.
+    await expect(page.getByText(/Also recorded: White Sucker/)).toBeVisible()
+    await expect(page.getByText(/estimate from 2 weeks of air temperature/)).toBeVisible()
+    await axe(page)
+    await first.getByRole('link', { name: 'How to tie it' }).click()
+    await expect(page.getByRole('heading', { name: 'How to set it up' })).toBeVisible()
+    check()
+  })
+
+  test('F08-H2 your thermometer reading and method change the advice', async ({ page }) => {
+    await mockNetwork(page)
+    await page.goto(`/plan?lat=${GOLDEN.lat}&lon=${GOLDEN.lon}&type=river&name=Clear%20Creek`)
+    await page.getByLabel(/Have a thermometer/).fill('74')
+    await expect(page.getByText('your reading')).toBeVisible()
+    // 74°F is too warm for trout: the warning shows and largemouth bass move up.
+    await expect(page.getByRole('region', { name: 'Best bets' }).locator('details').first()).toContainText('Largemouth bass')
+    await expect(page.getByText(/68°F or warmer/).first()).toBeAttached()
+    await page.getByRole('radiogroup').filter({ hasText: 'Lures' }).locator('label', { hasText: 'Fly' }).click()
+    const first = page.getByRole('region', { name: 'Best bets' }).locator('details').first()
+    await expect(first).toContainText('Flies:')
+    await expect(first).not.toContainText('Bait:')
+  })
+
+  test('F08-H3 a lake found from coordinates alone', async ({ page }) => {
+    const counts = await mockNetwork(page)
+    await page.goto(`/plan?lat=${PLACES.lake.lat}&lon=${PLACES.lake.lon}`)
+    await expect(page.getByRole('heading', { level: 2, name: 'Test Lake' })).toBeVisible()
+    await expect(page.getByRole('radio', { name: 'Lake' })).toBeChecked()
+    expect(counts.overpass).toBe(1)
+    await expect(page.getByRole('region', { name: 'Best bets' }).locator('details').first()).toContainText(/Largemouth bass|Brown trout|Rainbow trout/)
+  })
+
+  test('F08-E1 no public records: falls back to typical fish, and says so', async ({ page }) => {
+    await mockNetwork(page)
+    await page.goto(`/plan?lat=${PLACES.empty.lat}&lon=${PLACES.empty.lon}&type=pond&name=Quiet%20Pond`)
+    await expect(page.getByText(/No public fish records near here yet/)).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Best bets' }).locator('details').first()).toContainText(/Bluegill|Largemouth|Catfish|Crappie/)
+  })
+
+  test('F08-E2 salt water is out of scope, plainly', async ({ page }) => {
+    await mockNetwork(page)
+    await page.goto(`/plan?lat=${PLACES.coast.lat}&lon=${PLACES.coast.lon}`)
+    await expect(page.getByText(/Saltwater advice isn’t built yet/)).toBeVisible()
+  })
+
+  test('F08-H4 France: official electrofishing surveys count as evidence', async ({ page }) => {
+    const counts = await mockNetwork(page)
+    await page.goto(`/plan?lat=${PLACES.france.lat}&lon=${PLACES.france.lon}&type=river&name=Is%C3%A8re`)
+    await expect(page.getByText(/Official surveys/)).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Best bets' }).locator('details').first()).toContainText('Brown trout')
+    await expect(page.getByText(/Baitfish recorded here/)).toHaveCount(0)
+    expect(counts.hubeau).toBe(1)
+  })
+
+  test('F08-H5 Montana: stocking reports show and count as evidence', async ({ page }) => {
+    await mockNetwork(page)
+    await page.goto(`/plan?lat=${PLACES.montana.lat}&lon=${PLACES.montana.lon}`)
+    await expect(page.getByRole('heading', { level: 2, name: 'Missoula Kids Pond' })).toBeVisible()
+    await expect(page.getByText(/Stocked recently \(Montana FWP fish plants\)/)).toBeVisible()
+    await expect(page.getByText(/264 Rainbow Trout/)).toBeVisible()
+  })
+
+  test('F08-H6 from a public fish sighting on the map to a plan for that fish', async ({ page }) => {
+    const check = guard(page)
+    await mockNetwork(page)
+    await page.goto(`/?focus=${PLACES.sighting.lat},${PLACES.sighting.lon},14`)
+    await page.waitForTimeout(2500)
+    await page.getByTestId('map').click()
+    const sheet = page.getByRole('region', { name: /Rainbow Trout/ })
+    await expect(sheet).toBeVisible()
+    await expect(sheet).toContainText('test_observer')
+    await expect(sheet).toContainText('CC BY-NC')
+    await sheet.getByRole('button', { name: 'What to use here' }).click()
+    await expect(page.getByRole('region', { name: 'Best bets' }).locator('details').first()).toContainText('Rainbow trout')
+    check()
+  })
+
+  test('F08-H7 the rig guide', async ({ page }) => {
+    await mockNetwork(page)
+    await page.goto('/rigs')
+    await page.getByRole('button', { name: 'Fly' }).click()
+    await expect(page.getByRole('link', { name: /Texas rig/ })).toHaveCount(0)
+    await page.getByRole('link', { name: /Dry-dropper/ }).click()
+    await expect(page.getByRole('img', { name: /Diagram of a Dry-dropper/ })).toBeVisible()
+    await axe(page)
+  })
+})

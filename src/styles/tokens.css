@@ -17,6 +17,7 @@
   --tl-warning: #8f5200;
   --tl-cold: #2a5f9e;
   --tl-focus: #a6461a;
+  --tl-sighting: #6a4c9c;
   --tl-radius-sm: 6px;
   --tl-radius-md: 10px;
   --tl-radius-lg: 16px;
@@ -48,6 +49,7 @@
     --tl-warning: #f2b44f;
     --tl-cold: #8db8f0;
     --tl-focus: #e58a57;
+    --tl-sighting: #b9a1ec;
   }
 }
 :root[data-theme='dark'] {
@@ -68,4 +70,5 @@
   --tl-warning: #f2b44f;
   --tl-cold: #8db8f0;
   --tl-focus: #e58a57;
+  --tl-sighting: #b9a1ec;
 }

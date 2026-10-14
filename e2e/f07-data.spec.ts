@@ -50,7 +50,7 @@ test.describe('F07 move my data', () => {
 
 test('screens pass an accessibility scan', async ({ page }) => {
   await mockNetwork(page)
-  for (const path of ['/', '/log', '/logbook', '/species', '/more', '/stats']) {
+  for (const path of ['/', '/log', '/logbook', '/species', '/more', '/stats', '/plan', '/rigs']) {
     await page.goto(path)
     await page.waitForTimeout(300)
     await axe(page)

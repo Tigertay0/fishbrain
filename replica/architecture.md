@@ -18,7 +18,12 @@ Postgres schema below is the sync milestone, not v1.
 | stream lines | the basemap's own OpenMapTiles `waterway` layer, restyled | no extra API, cached with the tiles, works offline |
 | gauges | USGS Water Data OGC API v1 (`latest-continuous`, `monitoring-locations`, `continuous`) | the legacy WaterServices API shuts down 2027-02-22 |
 | weather | Open-Meteo forecast API | keyless, hourly pressure/cloud/wind, `past_days=1` for pressure trend |
-| amenities | Overpass API (OpenStreetMap) on demand | fly shops, slipways, campsites, parking and road bridges near streams |
+| amenities | Overpass API (OpenStreetMap) on demand | fly shops, slipways, piers, campsites, parking and road bridges near streams |
+| which water is here | Overpass `is_in` + `around` | the lake you're on or the river beside you, with type and rough size |
+| fish present | iNaturalist API (v1 species counts, v2 observations with `fields=`) | research-grade records, last 10 years; obscured points never pinned |
+| fish present (France) | Hub'Eau `etat_piscicole/observations` | OFB electrofishing surveys near the water |
+| stocking | Montana FWP (ArcGIS, by area); WDFW, NYSDEC (Socrata), MassWildlife (ArcGIS), by water name | adapters in `src/lib/stocking.ts`; uncovered states are listed, not hidden |
+| advice | `src/lib/advisor.ts` + `species.ts` + `rigs.ts` | pure functions: water, season, temperature, clarity, method and evidence in; ranked recommendations with reasons out |
 | search | Nominatim, on submit only | its usage policy forbids autocomplete |
 | sun/moon | suncalc (in-browser) | solunar periods with no API |
 | storage | IndexedDB via Dexie 4 | catches, photo blobs, markers, notes, API caches |
@@ -80,6 +85,13 @@ Webhooks: none. Jobs: none (no server). Background refresh happens on view.
   just hide them. "Water" keeps the water name and a 1 km-rounded point.
 - **Open-Meteo terms**: free for non-commercial use. If this is sold, switch to
   their paid plan or the NWS API (api.weather.gov) before launch.
+- **Name matching for stocking**: three states publish no coordinates, so
+  water names are matched with a sanitised `LIKE` term (letters, digits,
+  spaces only: no quotes can reach the query). Expect misses on unusual names.
+- **iNaturalist etiquette**: ≤1 request/second (enforced client-side), species
+  counts cached 7 days, sightings 3 days; observer and licence shown on every record.
+- **Advice honesty**: every recommendation lists why (temperature, season,
+  evidence count) and falls back to "typical for this water" in plain words.
 - **Tile etiquette**: offline downloads are capped (default 2,500 tiles) and
   never exceed zoom 15.
 

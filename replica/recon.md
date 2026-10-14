@@ -155,3 +155,30 @@ blobs), USGS rate limit without a key (50 requests/hour/IP), stream geometry
 from Overpass at the right zoom without hammering it, a forecast score that's
 honest about being a heuristic. Size: M for v1 (local-first, no backend). Sync,
 accounts and sharing push it to L.
+
+## v2 additions (2026-10-14): every species, and "what do I use here"
+
+Request: not just trout. At any body of water, say what bait and rig to use,
+and use public fishing data to show where to fish.
+
+| ID | screen | route / how to reach | purpose | key components | states seen |
+| --- | --- | --- | --- | --- | --- |
+| S14 | What to use | `/plan` tab, or "What to use here" on any water, gauge, sighting or place | species likely here, then rig, bait, lures, flies, where, how, colours, tackle, best times, with reasons | water card, conditions, rec cards with rig diagram, public-records panel | no location, finding water, no records (defaults), salt water, offline |
+| S15 | Rig guide | `/rigs`, `/rigs/:id` | 19 rigs with diagrams and steps | filter chips, SVG diagram, numbered steps | n/a |
+| S16 | Fish sighting sheet | Map → tap a purple dot | one public record with observer, licence, link | sheet | n/a |
+| S17 | Lake / pond sheet | Map → tap open water | name, fish recorded within 2 km, plan entry | sheet | unnamed water, no records |
+
+```
+F08 Decide what to use at a water
+    S01 (tap water / gauge / sighting) -> S17 -> S14 -> S15 (how to tie it)
+    happy path clicks: 3
+    edge: no public records (fall back to typical fish), salt water (say so),
+          no water temperature (estimate, or the angler's reading), offline
+```
+
+Public data used (all keyless, verified 2026-10-14): iNaturalist research-grade
+fish observations; OFB electrofishing surveys via Hub'Eau (France); stocking
+from Montana FWP (by area), WDFW, NYSDEC and MassWildlife (by water name).
+GBIF was considered and left out: its taxonomy backbone is mid-migration (no
+class rank for fish), and near test points its fish records were mostly
+iNaturalist duplicates.

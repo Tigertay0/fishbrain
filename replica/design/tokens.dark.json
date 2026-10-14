@@ -16,7 +16,8 @@
     "success": "#7cc97f",
     "warning": "#f2b44f",
     "cold": "#8db8f0",
-    "focus": "#e58a57"
+    "focus": "#e58a57",
+    "sighting": "#b9a1ec"
   },
   "pairs": [
     [
@@ -122,6 +123,20 @@
       "focus",
       "surface",
       "ui"
+    ],
+    [
+      "sighting",
+      "bg",
+      "ui"
+    ],
+    [
+      "sighting",
+      "raised",
+      "ui"
+    ],
+    [
+      "sighting",
+      "bg"
     ]
   ],
   "font": {

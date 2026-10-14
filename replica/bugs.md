@@ -48,6 +48,12 @@ and has a test that would catch it again.
 - Catch detail read "0 ft" for a gauge at the catch; now "at the gauge".
 - The raised centre tab button covered the last button on long pages.
 
+### BUG-007: a warm week in fall read as the spring spawn
+- Severity: S3 (wrong advice: "spawning" for bass in October)
+- Flow: F08
+- Cause: spawn phase used only the 2-week air trend.
+- Status: fixed (needs the trend and the calendar half to agree); unit test "a warm spell in fall is not the spring spawn".
+
 ## To check (not reproduced)
 
 - Live OpenFreeMap tiles: confirm the `waterway` layer carries `class` river/stream and names at z12+.

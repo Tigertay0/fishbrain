@@ -79,7 +79,7 @@ export type OfflineArea = {
 }
 
 export type Basemap = 'streets' | 'topo' | 'imagery'
-export type LayerKey = 'streams' | 'gauges' | 'catches' | 'markers' | 'amenities'
+export type LayerKey = 'streams' | 'gauges' | 'catches' | 'markers' | 'amenities' | 'sightings'
 
 export type AppSettings = {
   units: Units
@@ -96,7 +96,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultPrivacy: 'exact',
   usgsApiKey: '',
   basemap: 'streets',
-  layers: { streams: true, gauges: true, catches: true, markers: true, amenities: false },
+  layers: { streams: true, gauges: true, catches: true, markers: true, amenities: false, sightings: true },
 }
 
 class TailoutDB extends Dexie {
