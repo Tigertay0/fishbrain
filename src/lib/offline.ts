@@ -27,20 +27,23 @@ export function planArea(b: BBox, viewZoom: number): AreaPlan {
 
 export type Progress = { done: number; failed: number; total: number }
 
-export async function downloadTiles(
-  template: string,
-  b: BBox,
-  zooms: number[],
-  onProgress: (p: Progress) => void,
-  signal: AbortSignal,
-): Promise<Progress> {
-  const tiles = tilesForBBox(b, zooms)
-  const p: Progress = { done: 0, failed: 0, total: tiles.length }
+/** A tile layer to save: its URL template and the zooms worth having. */
+export type TileSource = { template: string; zooms: number[] }
+
+/** Every tile URL for the area, across sources ({z}/{x}/{y} placeholders in any order). */
+export function tileUrls(sources: TileSource[], b: BBox): string[] {
+  return sources.flatMap((s) =>
+    tilesForBBox(b, s.zooms).map((t) => s.template.replace('{z}', String(t.z)).replace('{x}', String(t.x)).replace('{y}', String(t.y))),
+  )
+}
+
+export async function downloadTiles(sources: TileSource[], b: BBox, onProgress: (p: Progress) => void, signal: AbortSignal): Promise<Progress> {
+  const urls = tileUrls(sources, b)
+  const p: Progress = { done: 0, failed: 0, total: urls.length }
   let next = 0
   const worker = async () => {
-    while (next < tiles.length && !signal.aborted) {
-      const t = tiles[next++]
-      const url = template.replace('{z}', String(t.z)).replace('{x}', String(t.x)).replace('{y}', String(t.y))
+    while (next < urls.length && !signal.aborted) {
+      const url = urls[next++]
       try {
         const res = await fetch(url, { signal })
         if (!res.ok) p.failed++

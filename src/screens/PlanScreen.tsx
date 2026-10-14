@@ -473,15 +473,20 @@ function RecCard({ rec, open, place, forecast, waterTempC }: { rec: Recommendati
 }
 
 /** Everything the best bets call for, in one list to pack before heading out. */
+const PACK_TOP = 3
+
 function PackCard({ recs }: { recs: Recommendation[] }) {
-  const pack = useMemo(() => packList(recs), [recs])
+  const headingId = useId()
+  const pack = useMemo(() => packList(recs, PACK_TOP), [recs])
   // With one fish, its own card already is the list.
   if (recs.length < 2 || (!pack.baits.length && !pack.lures.length && !pack.flies.length)) return null
-  const names = recs.slice(0, 3).map((r) => r.profile.name.toLowerCase())
+  const names = recs.slice(0, PACK_TOP).map((r) => r.profile.name.toLowerCase())
   return (
-    <section aria-label="Bring these" className="flex flex-col gap-3 rounded-md bg-surface p-4 text-sm">
+    <section aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md bg-surface p-4 text-sm">
       <div>
-        <h3 className="text-base font-bold">Bring these</h3>
+        <h3 id={headingId} className="text-base font-bold">
+          Bring these
+        </h3>
         <p className="text-muted">For {names.join(', ').replace(/, ([^,]*)$/, ' and $1')}. Best picks first.</p>
       </div>
       <TackleList label="Bait" items={pack.baits} tone="raised" />
@@ -492,11 +497,15 @@ function PackCard({ recs }: { recs: Recommendation[] }) {
 }
 
 function TackleList({ label, items, now = [], tone = 'surface' }: { label: string; items: string[]; now?: string[]; tone?: 'surface' | 'raised' }) {
+  const labelId = useId()
   if (!items.length) return null
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="font-semibold">{label}</span>
-      <ul className="flex flex-wrap gap-1.5">
+      <span id={labelId} className="font-semibold">
+        {label}
+      </span>
+      {/* role="list": Safari drops list semantics once list-style is removed. */}
+      <ul role="list" aria-labelledby={labelId} className="flex flex-wrap gap-1.5">
         {items.map((x) => {
           const best = now.includes(x)
           return (

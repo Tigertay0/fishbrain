@@ -1,8 +1,10 @@
 import type { Map as MlMap, StyleSpecification, ExpressionSpecification } from 'maplibre-gl'
 import type { Basemap, LayerKey } from './db'
+import { LAND_FILTER, LAND_MAX_TILE_ZOOM, LAND_MIN_ZOOM, LAND_SOURCE_LAYER, LAND_TILES, landColorExpression } from './publicland'
 
 export const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
 export const BASE_SOURCE = 'openmaptiles'
+export const LAND_SOURCE = 'padus'
 
 /** Used when the basemap can't load (first run offline): your data on a plain background. */
 export const FALLBACK_STYLE: StyleSpecification = {
@@ -32,10 +34,11 @@ export const LAYER_GROUPS: Record<LayerKey, string[]> = {
   markers: ['markers-circle', 'markers-label'],
   amenities: ['places-circle'],
   sightings: ['sightings-circle'],
+  publicLand: ['land-fill', 'land-line'],
 }
 
-/** Layers a tap can hit, best first. */
-export const HIT_LAYERS = ['markers-circle', 'catches-circle', 'gauges-circle', 'sightings-circle', 'places-circle', 'streams-hit', 'water-hit']
+/** Layers a tap can hit, best first. Public land is last: it sits under everything else. */
+export const HIT_LAYERS = ['markers-circle', 'catches-circle', 'gauges-circle', 'sightings-circle', 'places-circle', 'streams-hit', 'water-hit', 'land-fill']
 
 const css = (name: string, fallback: string) =>
   (typeof document !== 'undefined' && getComputedStyle(document.documentElement).getPropertyValue(`--tl-${name}`).trim()) || fallback
@@ -97,6 +100,8 @@ export function addOverlays(map: MlMap, basemap: Basemap): void {
       'streams-casing',
     )
   }
+
+  addPublicLand(map, map.getLayer('water-hit') ? 'water-hit' : firstSymbol)
 
   for (const id of ['places', 'sightings', 'gauges', 'catches', 'markers']) if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data: EMPTY })
 
@@ -193,6 +198,40 @@ export function addOverlays(map: MlMap, basemap: Basemap): void {
       paint: { 'text-color': css('text', '#1c1a16'), 'text-halo-color': halo, 'text-halo-width': 1.5 },
     })
   }
+}
+
+/**
+ * USGS PAD-US public land, tinted by manager and outlined, above the raster
+ * basemaps (so it shows on topo and satellite) and under streams and pins.
+ */
+function addPublicLand(map: MlMap, before: string | undefined): void {
+  if (map.getSource(LAND_SOURCE)) return
+  map.addSource(LAND_SOURCE, {
+    type: 'vector',
+    tiles: [LAND_TILES],
+    minzoom: LAND_MIN_ZOOM,
+    maxzoom: LAND_MAX_TILE_ZOOM,
+    attribution: 'Public land: USGS PAD-US',
+  })
+  const common = { source: LAND_SOURCE, 'source-layer': LAND_SOURCE_LAYER, minzoom: LAND_MIN_ZOOM, filter: LAND_FILTER }
+  map.addLayer(
+    {
+      ...common,
+      id: 'land-fill',
+      type: 'fill',
+      paint: { 'fill-color': landColorExpression(), 'fill-opacity': ['interpolate', ['linear'], ['zoom'], LAND_MIN_ZOOM, 0.3, 13, 0.2] },
+    },
+    before,
+  )
+  map.addLayer(
+    {
+      ...common,
+      id: 'land-line',
+      type: 'line',
+      paint: { 'line-color': landColorExpression(), 'line-opacity': 0.85, 'line-width': ['interpolate', ['linear'], ['zoom'], LAND_MIN_ZOOM, 0.5, 13, 1.5, 16, 2.5] },
+    },
+    before,
+  )
 }
 
 export function setBasemap(map: MlMap, basemap: Basemap): void {

@@ -85,10 +85,16 @@ test.describe('F04 markers and search', () => {
   test('F04-H3 layers: OSM places load near you by default, and the toggle hides them', async ({ page }) => {
     const counts = await mockNetwork(page)
     await page.goto(`/?focus=${GOLDEN.lat},${GOLDEN.lon},13`)
-    await expect.poll(() => counts.overpass).toBeGreaterThan(0)
+    await expect.poll(() => counts.overpass, { timeout: 15_000 }).toBeGreaterThan(0)
     await page.getByRole('button', { name: 'Map layers and offline' }).click()
     await page.getByLabel(/Shops, ramps and access/).uncheck()
     await expect(page.getByLabel(/Shops, ramps and access/)).not.toBeChecked()
+    // Public land is on by default, with a colour key that goes away with the layer.
+    await expect(page.getByRole('checkbox', { name: /Public land/ })).toBeChecked()
+    await expect(page.getByRole('list', { name: 'Public land colours' })).toContainText('Federal')
+    await page.getByRole('checkbox', { name: /Public land/ }).uncheck()
+    await expect(page.getByRole('list', { name: 'Public land colours' })).toHaveCount(0)
+    await page.getByRole('checkbox', { name: /Public land/ }).check()
     await expect(page.getByText(/basemap isn't loaded/)).toBeVisible() // the test style has no vector tiles to save
     await axe(page)
   })

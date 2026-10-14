@@ -6,10 +6,12 @@ import { useToast } from '../components/Toast'
 import { db, newId, type Basemap, type LayerKey } from '../lib/db'
 import { updateSettings, useSettings } from '../lib/settings'
 import { vectorTileTemplate } from '../lib/mapStyle'
-import { downloadTiles, MAX_AREA_TILES, planArea, type Progress } from '../lib/offline'
+import { downloadTiles, MAX_AREA_TILES, planArea, type Progress, type TileSource } from '../lib/offline'
+import { LAND_MAX_TILE_ZOOM, LAND_MIN_ZOOM, LAND_TILES, LEGEND, MANAGER_COLOR } from '../lib/publicland'
 import type { BBox } from '../lib/geo'
 
 const LAYERS: { key: LayerKey; label: string; hint: string }[] = [
+  { key: 'publicLand', label: 'Public land', hint: 'Who manages it; tap for the name and whether you can get in (USGS PAD-US)' },
   { key: 'streams', label: 'Streams and rivers', hint: 'Tap one for gauges and your notes' },
   { key: 'gauges', label: 'USGS gauges', hint: 'Live flow and water temp, colour = trout temp' },
   { key: 'catches', label: 'My catches', hint: 'Only on this device' },
@@ -30,13 +32,17 @@ export function LayersSheet({ map, onClose }: { map: MlMap | null; onClose: () =
   const bounds = map?.getBounds()
   const bbox: BBox | undefined = bounds ? { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() } : undefined
   const plan = bbox && map ? planArea(bbox, map.getZoom()) : undefined
+  // Public land comes along when it's switched on, so boundaries still show with no signal.
+  const landZooms = plan && !('tooBig' in plan) && s.layers.publicLand ? plan.zooms.filter((z) => z >= LAND_MIN_ZOOM && z <= LAND_MAX_TILE_ZOOM) : []
 
   const saveArea = async () => {
     if (!template || !bbox || !plan || 'tooBig' in plan) return
     const ctrl = new AbortController()
     abort.current = ctrl
+    const sources: TileSource[] = [{ template, zooms: plan.zooms }]
+    if (landZooms.length) sources.push({ template: LAND_TILES, zooms: landZooms })
     setProgress({ done: 0, failed: 0, total: plan.tiles })
-    const result = await downloadTiles(template, bbox, plan.zooms, setProgress, ctrl.signal)
+    const result = await downloadTiles(sources, bbox, setProgress, ctrl.signal)
     abort.current = null
     if (ctrl.signal.aborted) {
       toast('Download stopped')
@@ -82,6 +88,20 @@ export function LayersSheet({ map, onClose }: { map: MlMap | null; onClose: () =
           ))}
         </fieldset>
 
+        {s.layers.publicLand ? (
+          <div className="flex flex-col gap-1.5 text-xs">
+            <ul className="flex flex-wrap gap-x-3 gap-y-1" role="list" aria-label="Public land colours">
+              {LEGEND.map((l) => (
+                <li key={l.kind} className="flex items-center gap-1.5">
+                  <span aria-hidden className="size-3 rounded-sm border" style={{ background: `${MANAGER_COLOR[l.kind]}55`, borderColor: MANAGER_COLOR[l.kind] }} />
+                  {l.label}
+                </li>
+              ))}
+            </ul>
+            <p className="text-muted">Shows from zoom {LAND_MIN_ZOOM}. Unshaded land is private or unknown. Boundaries are approximate: obey posted signs.</p>
+          </div>
+        ) : null}
+
         <section className="flex flex-col gap-2 rounded-md bg-surface p-3" aria-label="Offline">
           <h3 className="text-sm font-semibold">Use this area offline</h3>
           {!template ? (
@@ -104,7 +124,8 @@ export function LayersSheet({ map, onClose }: { map: MlMap | null; onClose: () =
             <>
               <p className="text-sm text-muted">
                 Saves the map you're looking at, zoom {plan.zooms[0]}–{plan.zooms[plan.zooms.length - 1]}: {plan.tiles.toLocaleString()} tiles (limit{' '}
-                {MAX_AREA_TILES.toLocaleString()} per area, no limit on areas). Your catches, markers and the last gauge readings work offline anyway.
+                {MAX_AREA_TILES.toLocaleString()} per area, no limit on areas){landZooms.length ? ', plus public land boundaries' : ''}. Your catches, markers and the last
+                gauge readings work offline anyway.
               </p>
               <Button variant="primary" onClick={() => void saveArea()}>
                 <Download size={18} /> Save this area
@@ -113,7 +134,8 @@ export function LayersSheet({ map, onClose }: { map: MlMap | null; onClose: () =
           )}
         </section>
         <p className="text-xs text-muted">
-          Map © OpenFreeMap, OpenMapTiles, OpenStreetMap contributors. Topo and imagery: USGS The National Map. Gauges: USGS. Weather: Open-Meteo.
+          Map © OpenFreeMap, OpenMapTiles, OpenStreetMap contributors. Topo and imagery: USGS The National Map. Public land: USGS PAD-US. Gauges: USGS. Weather:
+          Open-Meteo.
         </p>
       </div>
     </Sheet>

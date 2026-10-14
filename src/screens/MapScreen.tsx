@@ -25,6 +25,8 @@ import { PlaceSheet } from '../sheets/PlaceSheet'
 import { LayersSheet } from '../sheets/LayersSheet'
 import { SightingSheet } from '../sheets/SightingSheet'
 import { WaterSheet, type WaterHit } from '../sheets/WaterSheet'
+import { LandSheet, type LandHit } from '../sheets/LandSheet'
+import { managerForSymbol } from '../lib/publicland'
 
 export type Selection =
   | { type: 'gauge'; gauge: Gauge }
@@ -34,6 +36,7 @@ export type Selection =
   | { type: 'layers' }
   | { type: 'sighting'; sighting: Sighting }
   | { type: 'water'; hit: WaterHit }
+  | { type: 'land'; hit: LandHit }
 
 const US_CENTER: [number, number] = [-98.35, 39.5]
 
@@ -55,6 +58,7 @@ export function MapScreen({ active }: { active: boolean }) {
   const markers = useLiveQuery(() => db.markers.toArray(), [])
   const settingsRef = useRef(settings)
   settingsRef.current = settings
+  const cancelAutoLocate = useRef<() => void>(() => {})
 
   // Create the map once; it stays mounted while other tabs are open.
   useEffect(() => {
@@ -82,8 +86,26 @@ export function MapScreen({ active }: { active: boolean }) {
         fitBoundsOptions: { maxZoom: 13 },
       })
       map.addControl(geo, 'top-right')
+      // The launch-time locate waits for a GPS fix; if the angler pans or searches first,
+      // the fix would yank the map back to them. Turn that pending locate off instead.
+      let autoLocating = false
+      cancelAutoLocate.current = () => {
+        if (!autoLocating) return
+        autoLocating = false
+        geo.trigger() // waiting → off
+      }
       geo.on('geolocate', (e: GeolocationPosition) => {
+        autoLocating = false
         void updateSettings({ lastFix: { lat: e.coords.latitude, lon: e.coords.longitude, at: Date.now() } })
+      })
+      geo.on('error', () => {
+        autoLocating = false
+      })
+      let movedByHand = false
+      map.on('movestart', (e) => {
+        if (!e.originalEvent) return
+        movedByHand = true
+        cancelAutoLocate.current()
       })
       map.addControl(new maplibregl.ScaleControl({ unit: s.units === 'metric' ? 'metric' : 'imperial' }), 'bottom-left')
 
@@ -120,7 +142,9 @@ export function MapScreen({ active }: { active: boolean }) {
         void loadVisible()
         // Open on the angler, zoomed in far enough that gauges, fish records and access points load around them.
         void shouldLocateOnOpen(navigator, openedWith).then((go) => {
-          if (go && !cancelled) geo.trigger()
+          if (!go || cancelled || movedByHand) return
+          autoLocating = true
+          geo.trigger()
         })
       })
     })
@@ -182,6 +206,8 @@ export function MapScreen({ active }: { active: boolean }) {
       const name = labels.map((l) => (l.properties['name:en'] || l.properties.name_en || l.properties.name) as string | undefined).find(Boolean)
       return setSel({ type: 'water', hit: { name, kind: String(w.properties.class ?? 'lake'), lat: lngLat.lat, lon: lngLat.lng } })
     }
+    const land = pick('land-fill')
+    if (land) return setSel({ type: 'land', hit: { lat: lngLat.lat, lon: lngLat.lng, manager: managerForSymbol(land.properties._symbol) } })
     setSel(null)
   }
 
@@ -322,11 +348,15 @@ export function MapScreen({ active }: { active: boolean }) {
     const map = mapRef.current
     if (!focus || !map) return
     const [lat, lon, zoom] = focus.split(',').map(Number)
+    cancelAutoLocate.current()
     if (Number.isFinite(lat) && Number.isFinite(lon)) map.flyTo({ center: [lon, lat], zoom: Number.isFinite(zoom) ? zoom : 14, maxDuration: 1500 })
     setParams({}, { replace: true })
   }, [focus, ready, setParams])
 
-  const flyTo = (p: LngLat, zoom = 14) => mapRef.current?.flyTo({ center: [p.lon, p.lat], zoom, maxDuration: 1500 })
+  const flyTo = (p: LngLat, zoom = 14) => {
+    cancelAutoLocate.current()
+    mapRef.current?.flyTo({ center: [p.lon, p.lat], zoom, maxDuration: 1500 })
+  }
 
   return (
     <div className="relative h-full w-full">
@@ -380,6 +410,14 @@ export function MapScreen({ active }: { active: boolean }) {
       ) : null}
       {sel?.type === 'sighting' ? <SightingSheet sighting={sel.sighting} onClose={() => setSel(null)} /> : null}
       {sel?.type === 'water' ? <WaterSheet hit={sel.hit} onClose={() => setSel(null)} /> : null}
+      {sel?.type === 'land' ? (
+        <LandSheet
+          key={`${sel.hit.lat},${sel.hit.lon}`}
+          hit={sel.hit}
+          onClose={() => setSel(null)}
+          onAddMarker={(p, name) => setSel({ type: 'marker', point: p, preset: { name: name ? `${name} access` : '', kind: 'access' } })}
+        />
+      ) : null}
       {sel?.type === 'layers' ? <LayersSheet map={mapRef.current} onClose={() => setSel(null)} /> : null}
     </div>
   )

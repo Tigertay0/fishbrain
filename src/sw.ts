@@ -54,6 +54,16 @@ registerRoute(
   }),
 )
 
+// USGS PAD-US public land vector tiles, as viewed and from "Save this area".
+// Boundaries change about once a year, so a long cache is safe.
+registerRoute(
+  ({ url }) => url.hostname === 'tiles.arcgis.com' && url.pathname.includes('/PADUS_') && url.pathname.includes('/VectorTileServer/tile/'),
+  new CacheFirst({
+    cacheName: 'land-tiles',
+    plugins: [ok, new ExpirationPlugin({ maxEntries: 8000, maxAgeSeconds: 60 * 60 * 24 * 90, purgeOnQuotaError: true })],
+  }),
+)
+
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') void self.skipWaiting()
 })
