@@ -53,6 +53,13 @@ npm run test:e2e     # end-to-end (Playwright), all external APIs mocked
 `replica/design/tokens*.json`; `node scripts/make-icons.mjs` re-renders the PNG
 icons from `public/icons/icon.svg`.
 
+## Deploy
+
+Live at https://tailout.tiger-tayo.workers.dev, served by a static-assets
+Cloudflare Worker (`wrangler.jsonc`). Cloudflare Workers Builds is connected to
+this repo: every push to `claude/gracious-carson-rkcn82` runs `npm run build`
+and `npx wrangler deploy`. To deploy by hand instead, run those two commands.
+
 ## Stack
 
 Vite 7, React 19, TypeScript, Tailwind 4, MapLibre GL 5, Dexie (IndexedDB),
