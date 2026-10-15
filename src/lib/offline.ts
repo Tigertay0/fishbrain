@@ -13,16 +13,18 @@ const MIN_USEFUL_ZOOM = 12
 
 /** Every zoom from a regional overview down to street level, dropping the deepest zooms until it fits. */
 export function planArea(b: BBox, viewZoom: number): AreaPlan {
-  const lo = Math.max(5, Math.floor(viewZoom) - 4)
+  // Zoomed in past the tiles (15+ at a stream), the view is still saved from zoom 14 tiles.
+  const view = Math.min(MAX_TILE_ZOOM, Math.floor(viewZoom))
+  const lo = Math.max(5, view - 4)
   let hi = MAX_TILE_ZOOM
   const range = (a: number, z: number) => Array.from({ length: z - a + 1 }, (_, i) => a + i)
-  while (hi >= Math.max(lo, Math.floor(viewZoom), MIN_USEFUL_ZOOM)) {
+  while (hi >= Math.max(lo, view, MIN_USEFUL_ZOOM)) {
     const zooms = range(lo, hi)
     const tiles = countTiles(b, zooms)
     if (tiles <= MAX_AREA_TILES) return { zooms, tiles }
     hi--
   }
-  return { tooBig: true, tiles: countTiles(b, range(lo, Math.max(lo, Math.floor(viewZoom)))) }
+  return { tooBig: true, tiles: countTiles(b, range(lo, Math.max(lo, view))) }
 }
 
 export type Progress = { done: number; failed: number; total: number }

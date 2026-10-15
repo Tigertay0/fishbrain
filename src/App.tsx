@@ -27,12 +27,16 @@ function Shell() {
 
   // Catches saved with no signal get their weather when the connection comes back.
   useEffect(() => {
+    // Both are housekeeping: on failure the catches stay pending and the cache untrimmed,
+    // and the next launch or reconnect tries again.
     const run = () =>
-      void backfillPending().then((n) => {
-        if (n) toast(`Added conditions to ${n} catch${n > 1 ? 'es' : ''} saved offline`)
-      })
+      void backfillPending()
+        .then((n) => {
+          if (n) toast(`Added conditions to ${n} catch${n > 1 ? 'es' : ''} saved offline`)
+        })
+        .catch(() => {})
     run()
-    void pruneCache(90 * DAY)
+    void pruneCache(90 * DAY).catch(() => {})
     window.addEventListener('online', run)
     return () => window.removeEventListener('online', run)
   }, [toast])

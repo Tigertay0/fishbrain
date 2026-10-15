@@ -29,6 +29,20 @@ const yearsAgo = (n: number) => {
 }
 const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10)
 
+type ArcGisReply<T> = { features?: T[]; error?: { message?: string } }
+
+/** ArcGIS reports failures as HTTP 200 with an `error` body: that is not "nothing stocked". */
+function arcgisFeatures<T>(r: ArcGisReply<T>): T[] {
+  if (r.error) throw new Error(r.error.message ?? 'Stocking lookup failed')
+  return r.features ?? []
+}
+
+/** Socrata rows; anything but a list is an error, not "nothing stocked". */
+function socrataRows(rows: unknown): Record<string, string>[] {
+  if (!Array.isArray(rows)) throw new Error('Stocking lookup failed')
+  return rows
+}
+
 /** Safe for SoQL and ArcGIS `LIKE` filters: letters, digits, spaces and a few punctuation marks only. */
 export function likeTerm(name: string): string | undefined {
   const core = name
@@ -54,8 +68,8 @@ export const ADAPTERS: Adapter[] = [
         `?where=${encodeURIComponent(`PLANTDATE >= DATE '${iso(yearsAgo(3).getTime())}'`)}` +
         `&geometry=${env}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects` +
         '&outFields=WATERBODY,SPECIES,NUMFISH,FISHSIZE,PLANTDATE&orderByFields=PLANTDATE%20DESC&resultRecordCount=40&returnGeometry=false&f=json'
-      const r = await fetchJson<{ features?: { attributes: Record<string, unknown> }[] }>(url)
-      return (r.features ?? []).map(({ attributes: a }) => ({
+      const r = await fetchJson<ArcGisReply<{ attributes: Record<string, unknown> }>>(url)
+      return arcgisFeatures(r).map(({ attributes: a }) => ({
         water: String(a.WATERBODY ?? ''),
         species: String(a.SPECIES ?? ''),
         count: num(a.NUMFISH),
@@ -73,9 +87,9 @@ export const ADAPTERS: Adapter[] = [
     async load({ name }) {
       const term = name && likeTerm(name)
       if (!term) return []
-      const where = `upper(release_location) like '%${term}%' AND release_start_date >= '${yearsAgo(3).toISOString().slice(0, 10)}'`
+      const where = `upper(release_location) like '%${term}%' AND release_start_date >= '${iso(yearsAgo(3).getTime())}'`
       const url = `https://data.wa.gov/resource/6fex-3r7d.json?$where=${encodeURIComponent(where)}&$order=release_start_date%20DESC&$limit=40`
-      const rows = await fetchJson<Record<string, string>[]>(url)
+      const rows = socrataRows(await fetchJson<unknown>(url))
       return rows.map((r) => ({
         water: r.release_location,
         species: r.species,
@@ -95,7 +109,7 @@ export const ADAPTERS: Adapter[] = [
       if (!term) return []
       const where = `upper(waterbody) like '%${term}%' AND year >= '${yearsAgo(3).getUTCFullYear()}'`
       const url = `https://data.ny.gov/resource/e52k-ymww.json?$where=${encodeURIComponent(where)}&$order=year%20DESC&$limit=40`
-      const rows = await fetchJson<Record<string, string>[]>(url)
+      const rows = socrataRows(await fetchJson<unknown>(url))
       return rows.map((r) => ({
         water: r.waterbody,
         species: r.species,
@@ -118,8 +132,8 @@ export const ADAPTERS: Adapter[] = [
         'https://services1.arcgis.com/7iJyYTjCtKsZS1LR/arcgis/rest/services/StockedFish_View/FeatureServer/0/query' +
         `?where=${encodeURIComponent(`UPPER(Waterbody) LIKE '%${term}%'`)}` +
         '&outFields=Waterbody,Town,Species,Stocked_Date&orderByFields=Stocked_Date%20DESC&resultRecordCount=40&f=geojson'
-      const r = await fetchJson<{ features?: { properties: Record<string, unknown> }[] }>(url)
-      return (r.features ?? []).map(({ properties: p }) => ({
+      const r = await fetchJson<ArcGisReply<{ properties: Record<string, unknown> }>>(url)
+      return arcgisFeatures(r).map(({ properties: p }) => ({
         water: `${p.Waterbody ?? ''}${p.Town ? `, ${p.Town}` : ''}`,
         species: MA_SPECIES[String(p.Species)] ?? String(p.Species ?? ''),
         date: typeof p.Stocked_Date === 'number' ? iso(p.Stocked_Date) : '',
@@ -133,8 +147,13 @@ const MA_SPECIES: Record<string, string> = { RT: 'Rainbow trout', BT: 'Brown tro
 
 export const STOCKING_COVERAGE = ADAPTERS.map((a) => a.state)
 
+const boxArea = (b: BBox) => (b.east - b.west) * (b.north - b.south)
+
+/** Boxes overlap at borders (New York's covers western Massachusetts), so the smallest one that holds the point wins. */
 export function adapterFor(lat: number, lon: number): Adapter | undefined {
-  return ADAPTERS.find((a) => lat >= a.box.south && lat <= a.box.north && lon >= a.box.west && lon <= a.box.east)
+  return ADAPTERS.filter((a) => lat >= a.box.south && lat <= a.box.north && lon >= a.box.west && lon <= a.box.east).sort(
+    (x, y) => boxArea(x.box) - boxArea(y.box),
+  )[0]
 }
 
 /** Recent stocking at or near this water, if its state publishes it. `undefined` means not covered. */

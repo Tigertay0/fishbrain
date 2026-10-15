@@ -7,6 +7,23 @@ export const AMENITY_CELL_DEG = 0.1
 export const AMENITY_MIN_ZOOM = 12
 const ENDPOINT = 'https://overpass-api.de/api/interpreter'
 
+/**
+ * Runs an Overpass QL query and returns its elements. Overpass reports a timeout or
+ * memory limit as HTTP 200 with a `remark` and partial (or no) elements: that is an
+ * error, not an empty answer to cache for weeks.
+ */
+export async function overpassQuery<E>(query: string, timeoutMs: number): Promise<E[]> {
+  const json = await fetchJson<{ elements?: E[]; remark?: string }>(ENDPOINT, {
+    method: 'POST',
+    // A form body keeps this a "simple" CORS request: no preflight.
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `data=${encodeURIComponent(query)}`,
+    timeoutMs,
+  })
+  if (typeof json.remark === 'string' || !Array.isArray(json.elements)) throw new Error(json.remark ?? 'Unexpected Overpass response')
+  return json.elements
+}
+
 export type PlaceKind = 'shop' | 'slipway' | 'fishing' | 'pier' | 'camp' | 'parking' | 'bridge'
 export type Place = { id: string; kind: PlaceKind; name?: string; lat: number; lon: number; osmUrl: string }
 
@@ -80,14 +97,5 @@ export function parsePlaces(json: { elements?: Element[] }): Place[] {
 }
 
 export function loadPlacesCell(cell: string) {
-  return cachedFetch(`osm:places:${cell}`, 14 * DAY, async () => {
-    const json = await fetchJson<{ elements?: Element[] }>(ENDPOINT, {
-      method: 'POST',
-      // A form body keeps this a "simple" CORS request: no preflight.
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `data=${encodeURIComponent(amenityQuery(cell))}`,
-      timeoutMs: 30000,
-    })
-    return parsePlaces(json)
-  })
+  return cachedFetch(`osm:places:${cell}`, 14 * DAY, async () => parsePlaces({ elements: await overpassQuery<Element>(amenityQuery(cell), 30000) }))
 }

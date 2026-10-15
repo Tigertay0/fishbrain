@@ -1,11 +1,10 @@
 // What body of water is here? OpenStreetMap through Overpass: the lake you're
 // standing beside (or floating on), or the river within a stone's throw.
-import { cachedFetch, DAY, fetchJson } from './cache'
+import { cachedFetch, DAY, fetchJson, HOUR } from './cache'
 import { distanceKm } from './geo'
 import type { WaterKind } from './advisor'
 import { forecastUrl } from './weather'
-
-const OVERPASS = 'https://overpass-api.de/api/interpreter'
+import { overpassQuery } from './overpass'
 
 export type WaterBody = {
   name?: string
@@ -80,15 +79,7 @@ export function pickWater(elements: El[]): WaterBody {
 }
 
 export function lookupWater(lat: number, lon: number) {
-  return cachedFetch(`osm:water:${lat.toFixed(4)}:${lon.toFixed(4)}`, 30 * DAY, async () => {
-    const json = await fetchJson<{ elements?: El[] }>(OVERPASS, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `data=${encodeURIComponent(waterQuery(lat, lon))}`,
-      timeoutMs: 25000,
-    })
-    return pickWater(json.elements ?? [])
-  })
+  return cachedFetch(`osm:water:${lat.toFixed(4)}:${lon.toFixed(4)}`, 30 * DAY, async () => pickWater(await overpassQuery<El>(waterQuery(lat, lon), 25000)))
 }
 
 export type AirHistory = { mean7C: number; mean14C: number; warming: boolean; rain48hMm: number }
@@ -97,7 +88,7 @@ export type AirHistory = { mean7C: number; mean14C: number; warming: boolean; ra
 export function loadAirHistory(lat: number, lon: number) {
   const rl = Math.round(lat * 10) / 10
   const ro = Math.round(lon * 10) / 10
-  return cachedFetch(`wx:hist:${rl}:${ro}`, 6 * 60 * 60_000, async () => {
+  return cachedFetch(`wx:hist:${rl}:${ro}`, 6 * HOUR, async () => {
     const url =
       forecastUrl(rl, ro).split('&hourly=')[0] + '&daily=temperature_2m_mean,precipitation_sum&timezone=auto&past_days=14&forecast_days=1'
     const raw = await fetchJson<{ daily: { time: string[]; temperature_2m_mean: (number | null)[]; precipitation_sum: (number | null)[] } }>(url)

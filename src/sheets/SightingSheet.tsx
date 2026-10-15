@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
-import { ExternalLink, Navigation, Sparkles } from 'lucide-react'
-import { Button, Sheet } from '../components/ui'
-import { directionsUrl } from '../lib/geo'
+import { ExternalLink, Sparkles } from 'lucide-react'
+import { Button, DirectionsLink, Sheet } from '../components/ui'
 import { formatDate } from '../lib/format'
 import { licenseLabel, type Sighting } from '../lib/publicdata'
 import { profileForLatin } from '../lib/species'
@@ -23,9 +22,7 @@ export function SightingSheet({ sighting: s, onClose }: { sighting: Sighting; on
           <Button variant="primary" onClick={() => nav(`/plan?lat=${s.lat}&lon=${s.lon}${profile ? `&target=${profile.id}` : ''}`)}>
             <Sparkles size={18} /> What to use here
           </Button>
-          <a className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-semibold text-accent" href={directionsUrl(s)} target="_blank" rel="noreferrer">
-            <Navigation size={18} /> Directions
-          </a>
+          <DirectionsLink point={s} />
         </>
       }
     >

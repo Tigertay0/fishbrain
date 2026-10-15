@@ -36,8 +36,18 @@ export function SettingsScreen() {
     try {
       const file = await buildExport(withPhotos)
       download(`tailout-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(file), 'application/json')
+    } catch {
+      toast(withPhotos ? 'Backup failed. Try again without photos.' : 'Backup failed', 'error')
     } finally {
       setBusy(undefined)
+    }
+  }
+
+  const exportCsv = async () => {
+    try {
+      download('tailout-catches.csv', await catchesCsv(), 'text/csv')
+    } catch {
+      toast('CSV export failed', 'error')
     }
   }
 
@@ -46,7 +56,9 @@ export function SettingsScreen() {
     setBusy('import')
     try {
       const r = await importExport(await f.text())
-      toast(`Imported ${r.catches} catches, ${r.markers} markers, ${r.streamNotes} notes${r.skipped ? ` (${r.skipped} skipped, already newer here)` : ''}`)
+      const older = r.skipped - r.invalid
+      const why = [older ? `${older} already newer here` : '', r.invalid ? `${r.invalid} unreadable` : ''].filter(Boolean).join(', ')
+      toast(`Imported ${r.catches} catches, ${r.markers} markers, ${r.streamNotes} notes${why ? ` (skipped ${why})` : ''}`)
     } catch (e) {
       toast((e as Error).message, 'error')
     } finally {
@@ -57,7 +69,14 @@ export function SettingsScreen() {
 
   const wipe = async () => {
     if (!confirm('Delete every catch, photo, marker and note on this device? Export first if you want a copy.')) return
-    await Promise.all([db.catches.clear(), db.photos.clear(), db.markers.clear(), db.streamNotes.clear(), db.offlineAreas.clear(), db.apiCache.clear()])
+    const tables = [db.catches, db.photos, db.markers, db.streamNotes, db.offlineAreas, db.apiCache]
+    try {
+      // All or nothing: a half-done wipe would leave photos without catches, or catches without photos.
+      await db.transaction('rw', tables, () => Promise.all(tables.map((t) => t.clear())))
+    } catch {
+      toast('Could not delete your data. Nothing was removed.', 'error')
+      return
+    }
     toast('All data deleted from this device')
   }
 
@@ -131,7 +150,7 @@ export function SettingsScreen() {
           <Button onClick={() => void exportJson()} busy={busy === 'export'}>
             <Download size={18} /> Back up (JSON)
           </Button>
-          <Button onClick={() => void catchesCsv().then((csv) => download('tailout-catches.csv', csv, 'text/csv'))}>
+          <Button onClick={() => void exportCsv()}>
             <Download size={18} /> Catches as CSV
           </Button>
           <Button onClick={() => fileRef.current?.click()} busy={busy === 'import'}>

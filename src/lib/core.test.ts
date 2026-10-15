@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { rateGate } from './cache'
 import { cToF, formatFlow, formatLength, formatTemp, formatWeight, lengthInputValue, parseLength, parseWeight } from './units'
 import { cellBBox, cellKey, cellsForBBox, coarsen, countTiles, distanceKm, tilesForBBox } from './geo'
 import { parseHistory, parseLatest, STALE_MS, titleCase, trend24h, troutTempBand } from './usgs'
@@ -152,6 +153,28 @@ describe('offline areas', () => {
     expect('zooms' in valley && valley.tiles <= MAX_AREA_TILES && valley.zooms.at(-1)! <= 14).toBe(true)
     const state = planArea({ west: -109, south: 37, east: -102, north: 41 }, 7)
     expect('tooBig' in state).toBe(true)
+  })
+  it('saves a small view zoomed in past the last tile zoom', () => {
+    const run = planArea({ west: -105.235, south: 39.75, east: -105.225, north: 39.756 }, 15.3)
+    expect('zooms' in run && run.zooms.at(-1)).toBe(14)
+  })
+})
+
+describe('rate gate', () => {
+  it('spaces calls that start together', async () => {
+    vi.useFakeTimers()
+    try {
+      const gate = rateGate(1000)
+      const done: number[] = []
+      void gate().then(() => done.push(1))
+      void gate().then(() => done.push(2))
+      await vi.advanceTimersByTimeAsync(10)
+      expect(done).toEqual([1])
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(done).toEqual([1, 2])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

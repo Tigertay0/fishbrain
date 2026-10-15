@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CloudSun, Fish, Navigation, Sparkles } from 'lucide-react'
-import { Button, Sheet } from '../components/ui'
-import { directionsUrl } from '../lib/geo'
+import { CloudSun, Fish, Sparkles } from 'lucide-react'
+import { Button, DirectionsLink, Sheet } from '../components/ui'
 import { loadSpeciesNear } from '../lib/publicdata'
 import type { Presence } from '../lib/advisor'
 
@@ -45,9 +44,7 @@ export function WaterSheet({ hit, onClose }: { hit: WaterHit; onClose: () => voi
           <Button onClick={() => nav(`/forecast?${q}`)}>
             <CloudSun size={18} /> Forecast
           </Button>
-          <a className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-semibold text-accent" href={directionsUrl(hit)} target="_blank" rel="noreferrer">
-            <Navigation size={18} /> Directions
-          </a>
+          <DirectionsLink point={hit} />
         </>
       }
     >

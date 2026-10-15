@@ -7,13 +7,20 @@ let current: AppSettings = DEFAULT_SETTINGS
 const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((l) => l())
 
-const ready: Promise<void> = db.settings
-  .get('app')
-  .then((row) => {
-    current = mergeSettings(row?.value)
-    emit()
-  })
-  .catch(() => {})
+// Until the stored row has been read, writing would replace it with defaults plus one
+// change (losing the API key and everything else), so a failed read blocks writes.
+let loaded = false
+const load = (): Promise<void> =>
+  db.settings
+    .get('app')
+    .then((row) => {
+      current = mergeSettings(row?.value)
+      loaded = true
+      emit()
+    })
+    .catch(() => {}) // IndexedDB unavailable: run on defaults in memory
+const ready = load()
+let retry: Promise<void> | undefined
 
 export async function getSettings(): Promise<AppSettings> {
   await ready
@@ -22,9 +29,11 @@ export async function getSettings(): Promise<AppSettings> {
 
 export async function updateSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
   await ready
+  // One shared retry, so writes that arrive together all land on top of the same read.
+  if (!loaded) await (retry ??= load().finally(() => (retry = undefined)))
   current = { ...current, ...patch }
   emit()
-  await db.settings.put({ key: 'app', value: current })
+  if (loaded) await db.settings.put({ key: 'app', value: current })
   return current
 }
 

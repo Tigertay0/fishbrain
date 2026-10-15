@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
-import { X } from 'lucide-react'
+import { Navigation, X } from 'lucide-react'
+import { directionsUrl, type LngLat } from '../lib/geo'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
 
@@ -177,12 +178,16 @@ export function EmptyState({ icon, title, children }: { icon: ReactNode; title: 
 export function Sheet({ title, onClose, children, actions }: { title: ReactNode; onClose: () => void; children: ReactNode; actions?: ReactNode }) {
   const headingId = useId()
   const headingRef = useRef<HTMLHeadingElement>(null)
+  // Callers pass a fresh onClose on every render; depending on it would re-run the
+  // effect and pull focus back to the heading mid-typing whenever the map re-renders.
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
   useEffect(() => {
     headingRef.current?.focus()
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeRef.current()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [])
   return (
     <section
       aria-labelledby={headingId}
@@ -199,6 +204,15 @@ export function Sheet({ title, onClose, children, actions }: { title: ReactNode;
       <div className="overflow-y-auto px-4 py-3">{children}</div>
       {actions ? <div className="flex flex-wrap gap-2 border-t border-border px-4 py-3">{actions}</div> : null}
     </section>
+  )
+}
+
+/** Hands a point to the phone's own maps app, for a sheet's action row. */
+export function DirectionsLink({ point }: { point: LngLat }) {
+  return (
+    <a className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-semibold text-accent" href={directionsUrl(point)} target="_blank" rel="noreferrer">
+      <Navigation size={18} /> Directions
+    </a>
   )
 }
 

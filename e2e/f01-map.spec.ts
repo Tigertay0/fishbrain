@@ -47,7 +47,8 @@ test.describe('F01 check a stream before going', () => {
 
   test('F01-E3 zoomed out: asks to zoom in instead of spending the USGS quota', async ({ page }) => {
     const counts = await mockNetwork(page)
-    await page.goto('/')
+    // A focus link keeps the map zoomed out: plain "/" flies to the angler and races the hint.
+    await page.goto('/?focus=39.5,-98.35,4')
     await expect(page.getByText('Zoom in to see river gauges')).toBeVisible()
     expect(counts.usgs).toBe(0)
   })

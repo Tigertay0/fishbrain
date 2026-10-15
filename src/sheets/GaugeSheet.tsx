@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowDownRight, ArrowRight, ArrowUpRight, CloudSun, ExternalLink, Fish, Navigation, Sparkles } from 'lucide-react'
-import { Button, Sheet, StatTile, type Tone } from '../components/ui'
+import { ArrowDownRight, ArrowRight, ArrowUpRight, CloudSun, ExternalLink, Fish, Sparkles } from 'lucide-react'
+import { Button, DirectionsLink, Sheet, StatTile, type Tone } from '../components/ui'
 import { Sparkline } from '../components/Sparkline'
 import { useSettings } from '../lib/settings'
 import { ago } from '../lib/format'
-import { directionsUrl } from '../lib/geo'
 import { cToF, formatFlow, formatStage, formatTemp } from '../lib/units'
 import {
   loadGaugeHistory,
@@ -79,9 +78,7 @@ export function GaugeSheet({ gauge, onClose }: { gauge: Gauge; onClose: () => vo
           <Button onClick={() => nav(`/forecast?lat=${gauge.lat}&lon=${gauge.lon}&name=${encodeURIComponent(title)}`)}>
             <CloudSun size={18} /> Forecast
           </Button>
-          <a className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-semibold text-accent" href={directionsUrl(gauge)} target="_blank" rel="noreferrer">
-            <Navigation size={18} /> Directions
-          </a>
+          <DirectionsLink point={gauge} />
         </>
       }
     >

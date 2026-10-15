@@ -28,6 +28,20 @@ export async function fetchJson<T>(url: string, init: RequestInit & { timeoutMs?
   }
 }
 
+/**
+ * For APIs that ask for at most one request per `gapMs`: each call waits for its own
+ * slot, so calls that start together still go out one at a time.
+ */
+export function rateGate(gapMs: number): () => Promise<void> {
+  let next = 0
+  return () => {
+    const now = Date.now()
+    const at = Math.max(now, next)
+    next = at + gapMs
+    return at > now ? new Promise((r) => setTimeout(r, at - now)) : Promise.resolve()
+  }
+}
+
 export type Cached<T> = { data: T; savedAt: number; stale: boolean }
 
 /**

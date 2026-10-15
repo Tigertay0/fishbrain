@@ -45,6 +45,7 @@ create table stream_notes (
   class_label text,
   species text[] not null default '{}',
   regs_url text,
+  regs_checked_on date,
   notes text,
   updated_at timestamptz not null default now(),
   primary key (user_id, stream_key)
@@ -54,6 +55,7 @@ alter table catches enable row level security;
 alter table markers enable row level security;
 alter table stream_notes enable row level security;
 
-create policy own_catches on catches for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy own_markers on markers for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy own_notes on stream_notes for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+-- Signed-in users only; (select auth.uid()) is evaluated once per query, not once per row.
+create policy own_catches on catches for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy own_markers on markers for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy own_notes on stream_notes for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);

@@ -136,7 +136,6 @@ export function LogCatchScreen() {
         await db.photos.put(photo)
         photoId = photo.id
       }
-      if (existing?.photoId && existing.photoId !== photoId) await db.photos.delete(existing.photoId)
       const newId = await saveCatch(
         {
           species: species.trim(),
@@ -153,6 +152,9 @@ export function LogCatchScreen() {
         },
         existing,
       )
+      // Only once the catch no longer points at the old photo is it safe to drop; if this
+      // fails the photo is merely orphaned, and the catch is saved either way.
+      if (existing?.photoId && existing.photoId !== photoId) await db.photos.delete(existing.photoId).catch(() => undefined)
       toast(existing ? 'Catch updated' : 'Catch saved')
       nav(`/catch/${newId}`, { replace: true })
     } catch {

@@ -1,11 +1,10 @@
 import { ArrowDown, ArrowUp, Waves } from 'lucide-react'
 import { formatClockDay } from '../lib/format'
+import { HOUR } from '../lib/cache'
 import { Button } from './ui'
 import { STAGE_TEXT, tideNow, type TideEvent, type TideStation } from '../lib/tides'
 
 export type Tides = { station: TideStation; events: TideEvent[] }
-
-const HOUR = 3_600_000
 
 /** undefined while loading, null when there's no station nearby, 'error' when the lookup failed. */
 export type TideState = Tides | null | 'error' | undefined

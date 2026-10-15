@@ -103,6 +103,8 @@ export function PlanScreen() {
     if (!place || !water) return
     let live = true
     const radius = searchRadiusKm({ ...water, type })
+    // A source that fails must not leave the last water's fish in place as this one's.
+    setSources({})
     setSourcesState('loading')
     const tasks = [
       loadSpeciesNear(place.lat, place.lon, radius).then((r) => live && setSources((x) => ({ ...x, inat: r.data }))),
@@ -124,6 +126,8 @@ export function PlanScreen() {
   useEffect(() => {
     if (!place) return
     let live = true
+    setAir(undefined)
+    setForecast(undefined)
     loadAirHistory(place.lat, place.lon)
       .then((r) => live && setAir(r.data))
       .catch(() => {})
@@ -385,7 +389,10 @@ export function PlanScreen() {
           <h2 className="text-lg font-bold">Best bets here</h2>
           {sourcesState === 'loading' ? <div className="skeleton h-40" role="status" aria-label="Checking which fish live here" /> : null}
           {result.fromDefaults && sourcesState !== 'loading' ? (
-            <p className="rounded-md bg-surface p-3 text-sm">No public fish records near here yet, so these are the fish that usually live in a {type === 'unknown' ? 'water' : type} like this.</p>
+            <p className="rounded-md bg-surface p-3 text-sm">
+              {sources.inat ? 'No public fish records near here yet' : 'Couldn’t load public fish records (offline?)'}, so these are the fish that usually live in a{' '}
+              {type === 'unknown' ? 'water' : type} like this.
+            </p>
           ) : null}
           {/* Wait for the records, so the list doesn't show a guess and then reshuffle. */}
           {sourcesState === 'loading' ? null : <PackCard recs={recs} />}
@@ -625,8 +632,10 @@ function WhereSection({ place, sources, state, other, forage }: { place: Place; 
           <p className="font-semibold">Fish recorded nearby (iNaturalist)</p>
           <p>{inat.slice(0, 10).map((p) => `${p.common} ${p.count}`).join(' · ')}</p>
         </div>
-      ) : state !== 'loading' ? (
+      ) : sources.inat ? (
         <p>No iNaturalist fish records near here in the last 10 years.</p>
+      ) : state !== 'loading' ? (
+        <p>Couldn’t load iNaturalist records (offline?).</p>
       ) : null}
       {surveys.length ? (
         <div>

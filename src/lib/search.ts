@@ -1,19 +1,17 @@
 // Place search through Nominatim. Its policy allows search on submit (no
 // as-you-type autocomplete) at most once a second, with attribution.
-import { fetchJson } from './cache'
+import { fetchJson, rateGate } from './cache'
 
 export type SearchResult = { id: string; name: string; detail: string; lat: number; lon: number; zoom: number }
 
 type Raw = { place_id: number; lat: string; lon: string; display_name: string; name?: string; type?: string; class?: string }
 
-let last = 0
+const nominatimSlot = rateGate(1000)
 
 export async function searchPlaces(q: string): Promise<SearchResult[]> {
   const query = q.trim()
   if (!query) return []
-  const wait = 1000 - (Date.now() - last)
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait))
-  last = Date.now()
+  await nominatimSlot()
   const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=${encodeURIComponent(query)}`
   const rows = await fetchJson<Raw[]>(url)
   return rows.map((r) => {
