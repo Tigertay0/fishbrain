@@ -69,11 +69,14 @@ async function attachConditions(id: string, point: LngLat, at: number): Promise<
   }
 }
 
+/** The forecast has no hour near the catch: unlike a network error, trying again won't help. */
+class NoWeatherError extends Error {}
+
 export async function lookupConditions(point: LngLat, at: number, forecast?: Forecast): Promise<Conditions> {
   const out: Conditions = {}
   const f = forecast ?? (Date.now() - at < DAY ? (await loadForecast(point.lat, point.lon)).data : undefined)
   const h = f && hourAt(f, at)
-  if (!h) throw new Error('No weather for that time')
+  if (!h) throw new NoWeatherError('No weather for that time')
   out.airTempC = h.tempC
   out.pressureHpa = Math.round(h.pressure * 10) / 10
   out.cloudPct = h.cloud
@@ -126,8 +129,12 @@ export async function backfillPending(): Promise<number> {
         x.conditions = { ...x.conditions, ...cond, pending: false }
       })
       done++
-    } catch {
-      break // still offline or limited; try again next time
+    } catch (e) {
+      if (!(e instanceof NoWeatherError)) break // still offline or limited; try again next time
+      // Retrying can't add an hour the forecast doesn't have, and it would hold up every catch behind it.
+      await db.catches.update(c.id, (x) => {
+        if (x.conditions) x.conditions.pending = false
+      })
     }
   }
   return done

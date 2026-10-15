@@ -1,7 +1,7 @@
 // The "what do I use here" engine. Pure functions: water + species evidence +
 // conditions in, ranked recommendations with their reasons out.
 import { RIG_BY_ID, type Method, type Rig } from './rigs'
-import { forageFor, PROFILE_BY_ID, PROFILES, profileForLatin, type Phase, type Profile, type Region, type Tactic, type WaterType } from './species'
+import { forageFor, PROFILE_BY_ID, profileForLatin, type Phase, type Profile, type Region, type Tactic, type WaterType } from './species'
 import { coastFor, defaultSaltTargets } from './saltwater'
 import { PREF_TEXT, STAGE_TEXT, stageFits, type TideNow } from './tides'
 import { cToF } from './units'
@@ -332,5 +332,3 @@ export function estimateWaterTempC(type: WaterKind, airMean7C: number, airMean14
   if (type === 'river') return clamp(0.85 * airMean7C + 2, 0.5, 30)
   return clamp(airMean14C + 1, 1, 31)
 }
-
-export const ALL_PROFILES = PROFILES

@@ -29,7 +29,8 @@ export function parseSeaTemp(raw: Raw, now: number): number | undefined {
 export function loadSeaTemp(lat: number, lon: number) {
   const rl = Math.round(lat * 10) / 10
   const ro = Math.round(lon * 10) / 10
-  return cachedFetch(`sst:${rl}:${ro}:${new Date().toISOString().slice(0, 13)}`, 3 * HOUR, async () => {
+  // No hour in the key: the 3-hour TTL decides freshness, and an offline copy can still be found.
+  return cachedFetch(`sst:${rl}:${ro}`, 3 * HOUR, async () => {
     const raw = await fetchJson<Raw>(`${MARINE}?latitude=${rl}&longitude=${ro}&hourly=sea_surface_temperature&past_days=1&forecast_days=1&timezone=auto`)
     return parseSeaTemp(raw, Date.now()) ?? null
   })

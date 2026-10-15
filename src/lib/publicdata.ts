@@ -3,8 +3,9 @@
 // "where are fish actually caught" signal. Every record keeps its observer,
 // licence and link, and is shown with attribution.
 // API: https://api.inaturalist.org (asks for ≤1 request/second; we cache hard).
-import { cachedFetch, DAY, fetchJson } from './cache'
+import { cachedFetch, DAY, fetchJson, rateGate } from './cache'
 import { cellBBox } from './geo'
+import { safeHttpUrl } from './format'
 import type { Presence } from './advisor'
 import { stockedLatin, type StockingEvent } from './stocking'
 
@@ -29,11 +30,9 @@ export type Sighting = {
 
 const since = (now = new Date()) => `${now.getUTCFullYear() - YEARS_BACK}-01-01`
 
-let last = 0
+const inatSlot = rateGate(1000)
 async function polite<T>(url: string): Promise<T> {
-  const wait = 1000 - (Date.now() - last)
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait))
-  last = Date.now()
+  await inatSlot()
   return fetchJson<T>(url)
 }
 
@@ -96,7 +95,7 @@ export function parseSightings(raw: ObsRaw): Sighting[] {
       date: r.observed_on,
       observer: r.user?.login,
       license: r.license_code ?? undefined,
-      url: r.uri ?? `https://www.inaturalist.org/observations/${r.id}`,
+      url: safeHttpUrl(r.uri) ?? `https://www.inaturalist.org/observations/${r.id}`,
     })
   }
   return out

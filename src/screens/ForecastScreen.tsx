@@ -19,7 +19,7 @@ type Place = LngLat & { label: string }
 export function ForecastScreen() {
   const s = useSettings()
   const toast = useToast()
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const gauges = useGauges()
   const [place, setPlace] = useState<Place>()
   const [forecast, setForecast] = useState<Forecast>()
@@ -33,8 +33,11 @@ export function ForecastScreen() {
   const qLon = Number(params.get('lon'))
   const qName = params.get('name')
   useEffect(() => {
-    if (params.get('lat') && Number.isFinite(qLat) && Number.isFinite(qLon)) setPlace({ lat: qLat, lon: qLon, label: qName ?? formatCoords({ lat: qLat, lon: qLon }) })
-    else if (s.lastFix && Date.now() - s.lastFix.at < 12 * 60 * MINUTE) setPlace((p) => p ?? { ...s.lastFix!, label: 'Your location' })
+    // Same spot, same object: a new GPS fix in settings must not reload the forecast for a linked place.
+    if (params.get('lat') && Number.isFinite(qLat) && Number.isFinite(qLon)) {
+      const label = qName ?? formatCoords({ lat: qLat, lon: qLon })
+      setPlace((p) => (p?.lat === qLat && p?.lon === qLon && p?.label === label ? p : { lat: qLat, lon: qLon, label }))
+    } else if (s.lastFix && Date.now() - s.lastFix.at < 12 * 60 * MINUTE) setPlace((p) => p ?? { ...s.lastFix!, label: 'Your location' })
     else if (s.lastView && s.lastView.zoom >= 7) setPlace((p) => p ?? { ...s.lastView!, label: 'Map centre' })
   }, [qLat, qLon, qName, params, s.lastFix, s.lastView])
 
@@ -62,6 +65,8 @@ export function ForecastScreen() {
         setLocating(false)
         const p = { lat: pos.coords.latitude, lon: pos.coords.longitude }
         void updateSettings({ lastFix: { ...p, at: Date.now() } })
+        // Drop the linked place, or the effect above would put it straight back.
+        setParams({}, { replace: true })
         setPlace({ ...p, label: 'Your location' })
       },
       (err) => {

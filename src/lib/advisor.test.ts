@@ -265,6 +265,9 @@ describe('public data', () => {
   it('stocking: state lookup, species mapping, and LIKE terms that cannot inject', () => {
     expect(adapterFor(46.87, -114)?.state).toBe('Montana')
     expect(adapterFor(39.75, -105.2)).toBeUndefined()
+    // New York's box covers western Massachusetts; the smaller box wins.
+    expect(adapterFor(42.1, -72.6)?.state).toBe('Massachusetts')
+    expect(adapterFor(42.65, -73.75)?.state).toBe('New York')
     expect(stockedLatin('Westslope Cutthroat Trout')).toBe('Oncorhynchus clarkii')
     expect(likeTerm("O'Brien Lake")).toBe('O BRIEN')
     expect(likeTerm("x'; DROP TABLE --")).toBe('X DROP TABLE --')

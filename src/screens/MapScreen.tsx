@@ -214,9 +214,14 @@ export function MapScreen({ active }: { active: boolean }) {
     setSel(null)
   }
 
+  // Every pan starts a new pass; an older one still awaiting cells for a view the angler
+  // has left stops there, instead of spending the USGS quota and overwriting the hints.
+  const loadRun = useRef(0)
   const loadVisible = useCallback(async () => {
     const map = mapRef.current
     if (!map) return
+    const run = ++loadRun.current
+    const current = () => run === loadRun.current
     const s = settingsRef.current
     const z = map.getZoom()
     const b = map.getBounds()
@@ -228,11 +233,13 @@ export function MapScreen({ active }: { active: boolean }) {
       else {
         setHints((h) => ({ ...h, gauges: undefined }))
         for (const cell of cells) {
+          if (!current()) return
           try {
             const r = await loadGaugeCell(cell, s.usgsApiKey)
             gaugeStore.upsert(r.data)
-            if (r.stale) setHints((h) => ({ ...h, gauges: 'Showing saved gauge readings' }))
+            if (r.stale && current()) setHints((h) => ({ ...h, gauges: 'Showing saved gauge readings' }))
           } catch (e) {
+            if (!current()) return
             const limited = e instanceof FetchError && e.status === 429
             setHints((h) => ({
               ...h,
@@ -250,9 +257,11 @@ export function MapScreen({ active }: { active: boolean }) {
       else {
         setHints((h) => ({ ...h, sightings: undefined }))
         for (const cell of cells) {
+          if (!current()) return
           try {
             sightingStore.upsert((await loadSightingsCell(cell)).data)
           } catch {
+            if (!current()) return
             setHints((h) => ({ ...h, sightings: 'Fish sightings unavailable right now' }))
             break
           }
@@ -266,9 +275,11 @@ export function MapScreen({ active }: { active: boolean }) {
       else {
         setHints((h) => ({ ...h, places: undefined }))
         for (const cell of cells) {
+          if (!current()) return
           try {
             placeStore.upsert((await loadPlacesCell(cell)).data)
           } catch {
+            if (!current()) return
             setHints((h) => ({ ...h, places: 'Places unavailable right now' }))
             break
           }
@@ -397,6 +408,7 @@ export function MapScreen({ active }: { active: boolean }) {
       {sel?.type === 'gauge' ? <GaugeSheet gauge={sel.gauge} onClose={() => setSel(null)} /> : null}
       {sel?.type === 'stream' ? (
         <StreamSheet
+          key={`${sel.hit.lat},${sel.hit.lon}`}
           hit={sel.hit}
           onClose={() => setSel(null)}
           onGauge={(gauge) => setSel({ type: 'gauge', gauge })}

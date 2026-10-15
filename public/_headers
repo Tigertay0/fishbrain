@@ -1,0 +1,5 @@
+# Cloudflare static assets: sent with every response (see also vercel.json).
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin

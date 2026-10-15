@@ -1,4 +1,5 @@
 import { db, type Catch, type Marker, type StreamNote } from './db'
+import { safeHttpUrl } from './format'
 
 export const EXPORT_FORMAT = 'tailout-export'
 
@@ -25,7 +26,8 @@ export async function buildExport(includePhotos: boolean): Promise<ExportFile> {
   return file
 }
 
-export type ImportResult = { catches: number; markers: number; streamNotes: number; photos: number; skipped: number }
+/** `skipped` counts every record not imported; `invalid` is the part of it that couldn't be read at all. */
+export type ImportResult = { catches: number; markers: number; streamNotes: number; photos: number; skipped: number; invalid: number }
 
 /** Merges an export into this device. A record replaces an existing one only if it is newer. */
 export async function importExport(text: string): Promise<ImportResult> {
@@ -36,41 +38,57 @@ export async function importExport(text: string): Promise<ImportResult> {
     throw new Error('That file is not valid JSON.')
   }
   if (!isExport(data)) throw new Error('That file is not a Tailout export.')
-  const res: ImportResult = { catches: 0, markers: 0, streamNotes: 0, photos: 0, skipped: 0 }
+  const res: ImportResult = { catches: 0, markers: 0, streamNotes: 0, photos: 0, skipped: 0, invalid: 0 }
+  const unreadable = () => {
+    res.skipped++
+    res.invalid++
+  }
   await db.transaction('rw', [db.catches, db.markers, db.streamNotes, db.photos], async () => {
     for (const c of data.catches) {
       if (!validCatch(c)) {
+        unreadable()
+        continue
+      }
+      const prev = await db.catches.get(c.id)
+      if (!isNewer(prev, c.updatedAt)) {
         res.skipped++
         continue
       }
-      if (await newer(db.catches.get(c.id), c.updatedAt)) {
-        await db.catches.put(c)
-        res.catches++
-      } else res.skipped++
+      // Otherwise the photo the replaced copy pointed at stays in the database forever.
+      if (prev?.photoId && prev.photoId !== c.photoId) await db.photos.delete(prev.photoId)
+      await db.catches.put(c)
+      res.catches++
     }
     for (const m of data.markers) {
       if (!validMarker(m)) {
-        res.skipped++
+        unreadable()
         continue
       }
-      if (await newer(db.markers.get(m.id), m.updatedAt)) {
+      if (isNewer(await db.markers.get(m.id), m.updatedAt)) {
         await db.markers.put(m)
         res.markers++
       } else res.skipped++
     }
     for (const n of data.streamNotes) {
-      if (typeof n?.key !== 'string' || typeof n?.name !== 'string') {
-        res.skipped++
+      if (!validNote(n)) {
+        unreadable()
         continue
       }
-      if (await newer(db.streamNotes.get(n.key), n.updatedAt)) {
-        await db.streamNotes.put(n)
+      if (isNewer(await db.streamNotes.get(n.key), n.updatedAt)) {
+        // The regulations link is rendered as a link: only http(s) survives.
+        await db.streamNotes.put({ ...n, regsUrl: safeHttpUrl(n.regsUrl) })
         res.streamNotes++
       } else res.skipped++
     }
     for (const p of data.photos ?? []) {
       if (typeof p?.id !== 'string' || (await db.photos.get(p.id))) continue
-      await db.photos.put({ id: p.id, full: dataUrlToBlob(p.full), thumb: dataUrlToBlob(p.thumb), createdAt: p.createdAt })
+      const full = dataUrlToBlob(p.full)
+      const thumb = dataUrlToBlob(p.thumb)
+      if (!full || !thumb) {
+        unreadable()
+        continue
+      }
+      await db.photos.put({ id: p.id, full, thumb, createdAt: p.createdAt })
       res.photos++
     }
   })
@@ -98,8 +116,9 @@ export async function catchesCsv(): Promise<string> {
 export function csvCell(v: unknown): string {
   if (v == null) return ''
   const s = String(v)
-  // Neutralise spreadsheet formulas, then quote if needed.
-  const safe = /^[=+\-@\t\r]/.test(s) && !/^-?\d/.test(s) ? `'${s}` : s
+  // Neutralise spreadsheet formulas, then quote if needed. Only a whole number like -105.23
+  // is left alone: "-1+cmd|..." starts with a digit too, and a spreadsheet would run it.
+  const safe = /^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?(e[+-]?\d+)?$/i.test(s) ? `'${s}` : s
   return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe
 }
 
@@ -120,24 +139,33 @@ function isExport(d: unknown): d is ExportFile {
   return !!x && x.format === EXPORT_FORMAT && Array.isArray(x.catches) && Array.isArray(x.markers) && Array.isArray(x.streamNotes)
 }
 
+const isDate = (v: unknown) => typeof v === 'string' && !Number.isNaN(Date.parse(v))
+const isOptionalCoord = (v: unknown) => v == null || Number.isFinite(v)
+
 function validCatch(c: Catch): boolean {
   return (
     typeof c?.id === 'string' &&
     typeof c.species === 'string' &&
-    !Number.isNaN(Date.parse(c.caughtAt)) &&
+    isDate(c.caughtAt) &&
+    isDate(c.updatedAt) &&
     ['exact', 'water', 'hidden'].includes(c.privacy) &&
+    isOptionalCoord(c.lat) &&
+    isOptionalCoord(c.lon) &&
     // honour the privacy rule even for imported data
     (c.privacy !== 'hidden' || (c.lat == null && c.lon == null))
   )
 }
 
 function validMarker(m: Marker): boolean {
-  return typeof m?.id === 'string' && typeof m.name === 'string' && Number.isFinite(m.lat) && Number.isFinite(m.lon)
+  return typeof m?.id === 'string' && typeof m.name === 'string' && Number.isFinite(m.lat) && Number.isFinite(m.lon) && isDate(m.updatedAt)
 }
 
-async function newer(existing: Promise<{ updatedAt: string } | undefined>, updatedAt: string): Promise<boolean> {
-  const e = await existing
-  return !e || Date.parse(updatedAt) > Date.parse(e.updatedAt)
+function validNote(n: StreamNote): boolean {
+  return typeof n?.key === 'string' && typeof n.name === 'string' && isDate(n.updatedAt)
+}
+
+function isNewer(existing: { updatedAt: string } | undefined, updatedAt: string): boolean {
+  return !existing || Date.parse(updatedAt) > Date.parse(existing.updatedAt)
 }
 
 function blobToDataUrl(b: Blob): Promise<string> {
@@ -149,11 +177,18 @@ function blobToDataUrl(b: Blob): Promise<string> {
   })
 }
 
-function dataUrlToBlob(url: string): Blob {
-  const [head, body] = url.split(',')
-  const type = /data:([^;]+)/.exec(head)?.[1] ?? 'image/jpeg'
-  const bin = atob(body)
-  const bytes = new Uint8Array(bin.length)
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-  return new Blob([bytes], { type })
+/** The image in a base64 data URL, or undefined when it isn't one. */
+function dataUrlToBlob(url: unknown): Blob | undefined {
+  if (typeof url !== 'string') return undefined
+  const comma = url.indexOf(',')
+  const type = comma < 0 ? undefined : /^data:(image\/[\w.+-]+);base64$/.exec(url.slice(0, comma))?.[1]
+  if (!type) return undefined
+  try {
+    const bin = atob(url.slice(comma + 1))
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    return new Blob([bytes], { type })
+  } catch {
+    return undefined // not valid base64
+  }
 }

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import type { Map as MlMap } from 'maplibre-gl'
 import { Download } from 'lucide-react'
 import { Button, Segmented, Sheet } from '../components/ui'
@@ -20,11 +20,25 @@ const LAYERS: { key: LayerKey; label: string; hint: string }[] = [
   { key: 'amenities', label: 'Shops, ramps and access', hint: 'From OpenStreetMap, unverified' },
 ]
 
+// The area download outlives the sheet: closing it to look at the map must not stop it,
+// and reopening must show it (with Stop) instead of offering a second, parallel download.
+type Download = { ctrl: AbortController; progress: Progress }
+let download: Download | undefined
+const downloadListeners = new Set<() => void>()
+function setDownload(d: Download | undefined) {
+  download = d
+  downloadListeners.forEach((l) => l())
+}
+function subscribeDownload(l: () => void) {
+  downloadListeners.add(l)
+  return () => downloadListeners.delete(l)
+}
+
 export function LayersSheet({ map, onClose }: { map: MlMap | null; onClose: () => void }) {
   const s = useSettings()
   const toast = useToast()
-  const [progress, setProgress] = useState<Progress>()
-  const abort = useRef<AbortController>(null)
+  const active = useSyncExternalStore(subscribeDownload, () => download)
+  const progress = active?.progress
 
   const toggle = (key: LayerKey) => void updateSettings({ layers: { ...s.layers, [key]: !s.layers[key] } })
 
@@ -37,17 +51,15 @@ export function LayersSheet({ map, onClose }: { map: MlMap | null; onClose: () =
   const landTiles = bbox && landZooms.length ? countTiles(bbox, landZooms) : 0
 
   const saveArea = async () => {
-    if (!template || !bbox || !plan || 'tooBig' in plan) return
+    if (!template || !bbox || !plan || 'tooBig' in plan || download) return
     const ctrl = new AbortController()
-    abort.current = ctrl
     const sources: TileSource[] = [{ template, zooms: plan.zooms }]
     if (landZooms.length) sources.push({ template: LAND_TILES, zooms: landZooms })
-    setProgress({ done: 0, failed: 0, total: plan.tiles + landTiles })
-    const result = await downloadTiles(sources, bbox, setProgress, ctrl.signal)
-    abort.current = null
+    setDownload({ ctrl, progress: { done: 0, failed: 0, total: plan.tiles + landTiles } })
+    const result = await downloadTiles(sources, bbox, (p) => setDownload({ ctrl, progress: p }), ctrl.signal)
+    setDownload(undefined)
     if (ctrl.signal.aborted) {
       toast('Download stopped')
-      setProgress(undefined)
       return
     }
     const c = map!.getCenter()
@@ -60,7 +72,6 @@ export function LayersSheet({ map, onClose }: { map: MlMap | null; onClose: () =
       savedAt: new Date().toISOString(),
     })
     toast(result.failed ? `Saved with ${result.failed} tiles missing. Try again on better signal.` : 'Area saved for offline use')
-    setProgress(undefined)
   }
 
   return (
@@ -116,7 +127,7 @@ export function LayersSheet({ map, onClose }: { map: MlMap | null; onClose: () =
                 <span>
                   {progress.done.toLocaleString()} of {progress.total.toLocaleString()} tiles
                 </span>
-                <Button size="sm" variant="ghost" onClick={() => abort.current?.abort()}>
+                <Button size="sm" variant="ghost" onClick={() => active?.ctrl.abort()}>
                   Stop
                 </Button>
               </div>

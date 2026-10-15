@@ -4,10 +4,13 @@ import { NavigationRoute, registerRoute } from 'workbox-routing'
 import { CacheFirst, StaleWhileRevalidate } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
-import type { WorkboxPlugin } from 'workbox-core'
+import { clientsClaim, type WorkboxPlugin } from 'workbox-core'
 
 declare const self: ServiceWorkerGlobalScope
 
+// Control the page that installed us, or "Save this area" on a first visit fetches past
+// the tile caches and saves nothing. Updates still wait for the user (SKIP_WAITING below).
+clientsClaim()
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')))

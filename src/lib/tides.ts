@@ -1,14 +1,13 @@
 // Tides from NOAA CO-OPS: the nearest prediction station and its highs and lows.
 // Keyless, CORS-enabled, US coasts only. Times are requested in GMT so they
 // never depend on the station's or the phone's time zone.
-import { cachedFetch, DAY, fetchJson, HOUR } from './cache'
+import { cachedFetch, DAY, fetchJson, HOUR, MINUTE } from './cache'
 import { distanceKm } from './geo'
 
 const STATIONS = 'https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/tidepredstations.json'
 const DATA = 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter'
 /** Stations further than this tell you little about the water in front of you. */
 export const STATION_RADIUS_MI = 25
-const MINUTE = 60_000
 
 export type TideStation = { id: string; name: string; lat: number; lon: number; km: number }
 export type TideEvent = { t: number; type: 'high' | 'low'; ft: number }
@@ -52,9 +51,10 @@ export function parsePredictions(json: { predictions?: RawPrediction[]; error?: 
   return (json.predictions ?? [])
     .map((p) => {
       const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/.exec(p.t ?? '')
-      if (!m || (p.type !== 'H' && p.type !== 'L')) return undefined
+      const ft = p.v == null || p.v === '' ? NaN : Number(p.v)
+      if (!m || (p.type !== 'H' && p.type !== 'L') || !Number.isFinite(ft)) return undefined
       const t = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5])
-      return { t, type: p.type === 'H' ? 'high' : 'low', ft: Math.round(Number(p.v) * 10) / 10 } as TideEvent
+      return { t, type: p.type === 'H' ? 'high' : 'low', ft: Math.round(ft * 10) / 10 } as TideEvent
     })
     .filter((e): e is TideEvent => !!e)
     .sort((a, b) => a.t - b.t)
@@ -62,10 +62,13 @@ export function parsePredictions(json: { predictions?: RawPrediction[]; error?: 
 
 const ymd = (ms: number) => new Date(ms).toISOString().slice(0, 10).replace(/-/g, '')
 
-/** Highs and lows from yesterday to two days ahead (so "the last turn" is always known). Cached for 12 hours. */
+/**
+ * Highs and lows from yesterday to two days ahead (so "the last turn" is always known). Cached for 12 hours.
+ * The key leaves out the date: with it, the offline copy stopped matching at UTC midnight (evening in the US).
+ */
 export function loadTides(stationId: string, now: number = Date.now()) {
   const begin = ymd(now - DAY)
-  return cachedFetch(`tide:pred:${stationId}:${begin}`, 12 * HOUR, async () => {
+  return cachedFetch(`tide:pred:${stationId}`, 12 * HOUR, async () => {
     const q = new URLSearchParams({
       product: 'predictions',
       application: 'tailout',

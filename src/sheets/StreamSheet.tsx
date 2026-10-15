@@ -1,18 +1,18 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CloudSun, Fish, MapPinPlus, Navigation, Sparkles } from 'lucide-react'
-import { Button, Chip, Field, inputClass, Sheet } from '../components/ui'
+import { CloudSun, Fish, MapPinPlus, Sparkles } from 'lucide-react'
+import { Button, Chip, DirectionsLink, Field, inputClass, Sheet } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { db, nowIso, type StreamNote } from '../lib/db'
 import { peekCache } from '../lib/cache'
-import { directionsUrl, type LngLat } from '../lib/geo'
+import type { LngLat } from '../lib/geo'
 import { normalizeWater, streamKey, type StreamHit } from '../lib/streams'
 import { useGauges } from '../lib/store'
 import { nearestGauges, type Gauge } from '../lib/usgs'
 import { formatDistance, formatFlow, formatTemp, formatLength } from '../lib/units'
 import { useSettings } from '../lib/settings'
-import { formatDate } from '../lib/format'
+import { formatDate, safeHttpUrl } from '../lib/format'
 import { PROFILES } from '../lib/species'
 
 const CLASS_SUGGESTIONS = ['Wild trout', 'Stocked', 'Catch and release', 'Artificial lures only', 'Delayed harvest', 'Trophy water']
@@ -52,14 +52,20 @@ export function StreamSheet({
   const save = async () => {
     if (!key || !hit.name) return
     const regsUrl = draft.regsUrl?.trim()
-    if (regsUrl && !/^https?:\/\//i.test(regsUrl)) {
+    if (regsUrl && !safeHttpUrl(regsUrl)) {
       toast('Regulations link must start with http:// or https://', 'error')
       return
     }
-    await db.streamNotes.put({ ...draft, regsUrl: regsUrl || undefined, key, name: hit.name, updatedAt: nowIso() })
+    try {
+      await db.streamNotes.put({ ...draft, regsUrl: regsUrl || undefined, key, name: hit.name, updatedAt: nowIso() })
+    } catch {
+      toast('Could not save. Is storage full?', 'error')
+      return
+    }
     setEditing(false)
     toast('Stream notes saved')
   }
+  const regsHref = safeHttpUrl(note?.regsUrl)
 
   const q = `lat=${hit.lat}&lon=${hit.lon}`
   return (
@@ -89,9 +95,7 @@ export function StreamSheet({
           <Button onClick={() => nav(`/forecast?${q}&name=${encodeURIComponent(title)}`)}>
             <CloudSun size={18} /> Forecast
           </Button>
-          <a className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-semibold text-accent" href={directionsUrl(hit)} target="_blank" rel="noreferrer">
-            <Navigation size={18} /> Directions
-          </a>
+          <DirectionsLink point={hit} />
         </>
       }
     >
@@ -145,11 +149,11 @@ export function StreamSheet({
                       <dd>{note.species.join(', ')}</dd>
                     </>
                   ) : null}
-                  {note.regsUrl ? (
+                  {regsHref ? (
                     <>
                       <dt className="text-muted">Regs</dt>
                       <dd>
-                        <a className="font-semibold text-accent underline" href={note.regsUrl} target="_blank" rel="noreferrer">
+                        <a className="font-semibold text-accent underline" href={regsHref} target="_blank" rel="noreferrer">
                           Open regulations
                         </a>
                         {note.regsCheckedOn ? <span className="text-muted"> · checked {formatDate(note.regsCheckedOn)}</span> : null}

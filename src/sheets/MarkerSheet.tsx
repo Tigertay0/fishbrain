@@ -1,9 +1,9 @@
 import { useId, useState } from 'react'
-import { Navigation, Trash2 } from 'lucide-react'
-import { Button, Field, inputClass, Segmented, Sheet } from '../components/ui'
+import { Trash2 } from 'lucide-react'
+import { Button, DirectionsLink, Field, inputClass, Segmented, Sheet } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { db, newId, nowIso, type Marker, type MarkerKind } from '../lib/db'
-import { directionsUrl, formatCoords, type LngLat } from '../lib/geo'
+import { formatCoords, type LngLat } from '../lib/geo'
 
 export const MARKER_KINDS: { value: MarkerKind; label: string }[] = [
   { value: 'access', label: 'Access' },
@@ -20,6 +20,8 @@ export function MarkerSheet({ marker, point, preset, onClose }: { marker?: Marke
   const [name, setName] = useState(marker?.name ?? preset?.name ?? '')
   const [notes, setNotes] = useState(marker?.notes ?? '')
   const [error, setError] = useState<string>()
+  // One id for the life of the sheet, so a double tap on Save writes one marker, not two.
+  const [id] = useState(() => marker?.id ?? newId())
   const nameId = useId()
   const notesId = useId()
 
@@ -30,7 +32,7 @@ export function MarkerSheet({ marker, point, preset, onClose }: { marker?: Marke
     }
     const now = nowIso()
     await db.markers.put({
-      id: marker?.id ?? newId(),
+      id,
       kind,
       name: name.trim(),
       notes: notes.trim() || undefined,
@@ -61,9 +63,7 @@ export function MarkerSheet({ marker, point, preset, onClose }: { marker?: Marke
           </Button>
           {marker ? (
             <>
-              <a className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-semibold text-accent" href={directionsUrl(point)} target="_blank" rel="noreferrer">
-                <Navigation size={18} /> Directions
-              </a>
+              <DirectionsLink point={point} />
               <Button variant="danger" onClick={() => void remove()}>
                 <Trash2 size={18} /> Delete
               </Button>

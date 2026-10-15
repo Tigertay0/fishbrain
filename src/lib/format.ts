@@ -63,3 +63,14 @@ export function toLocalInput(iso: string): string {
 export function fromLocalInput(v: string): string {
   return new Date(v).toISOString()
 }
+
+/** The URL if it is a well-formed http(s) link, else undefined: never a javascript: or data: link in an href. */
+export function safeHttpUrl(v: unknown): string | undefined {
+  if (typeof v !== 'string') return undefined
+  try {
+    const { protocol } = new URL(v)
+    return protocol === 'https:' || protocol === 'http:' ? v : undefined
+  } catch {
+    return undefined
+  }
+}

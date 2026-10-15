@@ -36,6 +36,9 @@ describe('transfer', () => {
     expect(csvCell('a,b')).toBe('"a,b"')
     expect(csvCell('say "hi"')).toBe('"say ""hi"""')
     expect(csvCell(undefined)).toBe('')
+    // Starts with "-" and a digit, but is a formula, not a number.
+    expect(csvCell("-1+cmd|' /C calc'!A0")).toBe("'-1+cmd|' /C calc'!A0")
+    expect(csvCell(-12.5)).toBe('-12.5')
   })
 
   const base: Catch = { id: 'c1', species: 'Brown trout', caughtAt: '2026-10-01T12:00:00Z', privacy: 'exact', lat: 1, lon: 2, createdAt: '2026-10-01T12:00:00Z', updatedAt: '2026-10-01T12:00:00Z' }
@@ -51,6 +54,22 @@ describe('transfer', () => {
     expect(r).toMatchObject({ catches: 0, skipped: 2 })
     expect((await db.catches.get('c1'))!.species).toBe('Brown trout')
     expect(await db.catches.get('c2')).toBeUndefined()
+  })
+  it('drops non-http regulation links and skips a broken photo without losing the rest', async () => {
+    const r = await importExport(
+      JSON.stringify({
+        format: EXPORT_FORMAT,
+        version: 1,
+        exportedAt: '',
+        catches: [base],
+        markers: [],
+        streamNotes: [{ key: 'k', name: 'Clear Creek', regsUrl: 'javascript:alert(1)', updatedAt: '2026-10-01T12:00:00Z' }],
+        photos: [{ id: 'p1', full: 'not a data url', thumb: 'data:image/jpeg;base64,AAAA', createdAt: '' }],
+      }),
+    )
+    expect(r).toMatchObject({ catches: 1, streamNotes: 1, photos: 0, invalid: 1 })
+    expect((await db.streamNotes.get('k'))!.regsUrl).toBeUndefined()
+    expect(await db.photos.get('p1')).toBeUndefined()
   })
 })
 
